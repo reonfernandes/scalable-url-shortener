@@ -1,14 +1,27 @@
 package com.reon.userservice.service;
 
+import com.reon.userservice.dto.LoginRequest;
 import com.reon.userservice.dto.RegistrationRequest;
+import com.reon.userservice.dto.UpdateProfileRequest;
+import com.reon.userservice.dto.response.LoginResponse;
 import com.reon.userservice.dto.response.RegistrationResponse;
 import com.reon.userservice.dto.response.UserProfile;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.data.domain.Page;
 
 public interface UserService {
     RegistrationResponse registerUser(RegistrationRequest registrationRequest);
+    LoginResponse authenticateUser(LoginRequest loginRequest, HttpServletResponse response);
 
-    UserProfile fetchUserProfile(String userId);
+    UserProfile fetchUserProfile();
+    void updateUserProfile(UpdateProfileRequest request);
+
+    void deleteAccount(String userId);
 
     void incrementUrlCountForUser(String userId);
     void decrementUrlCountForUser(String userId);
+
+    void deactiveAccount(String userId);
+    void activateAccount(String userId);
+    Page<UserProfile> fetchAllUsers(int pageNo, int pageSize);
 }

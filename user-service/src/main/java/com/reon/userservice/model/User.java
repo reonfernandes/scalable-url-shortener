@@ -5,10 +5,15 @@ import com.reon.userservice.model.type.Role;
 import com.reon.userservice.model.type.Tier;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
@@ -17,7 +22,8 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class User {
+public class User implements UserDetails {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "user_id", updatable = false, nullable = false)
@@ -81,5 +87,22 @@ public class User {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return role.stream()
+                .map(userRole -> new SimpleGrantedAuthority("ROLE_" + userRole.name()))
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return this.active;
     }
 }
