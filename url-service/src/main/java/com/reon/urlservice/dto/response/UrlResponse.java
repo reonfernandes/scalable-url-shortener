@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 @Builder
 public record UrlResponse(
+        Long urlId,
         String userId,
         String title,
         String shortCode,

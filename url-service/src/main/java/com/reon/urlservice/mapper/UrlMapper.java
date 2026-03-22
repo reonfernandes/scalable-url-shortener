@@ -16,6 +16,7 @@ public class UrlMapper {
 
     public UrlResponse urlResponseToUser(UrlMapping urlMapping) {
         return UrlResponse.builder()
+                .urlId(urlMapping.getUrlId())
                 .userId(urlMapping.getUserId())
                 .title(urlMapping.getTitle())
                 .shortCode(urlMapping.getShortCode())

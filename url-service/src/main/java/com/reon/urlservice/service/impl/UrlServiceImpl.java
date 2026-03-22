@@ -1,9 +1,11 @@
 package com.reon.urlservice.service.impl;
 
 import com.reon.exception.AliasAlreadyTakenException;
+import com.reon.exception.UrlNotFoundException;
 import com.reon.exception.UrlQuotaExceededException;
 import com.reon.urlservice.common.Base62Encoder;
 import com.reon.urlservice.dto.UrlRequest;
+import com.reon.urlservice.dto.response.UrlListResponse;
 import com.reon.urlservice.dto.response.UrlResponse;
 import com.reon.urlservice.jwt.JwtService;
 import com.reon.urlservice.mapper.UrlMapper;
@@ -14,11 +16,16 @@ import com.reon.urlservice.service.UrlService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -82,6 +89,45 @@ public class UrlServiceImpl implements UrlService {
         return urlMapper.urlResponseToUser(saveUrl);
     }
 
+    @Override
+    public void deleteUrl(Long urlId) {
+        log.info("URL Service :: Deleting url with id: {}", urlId);
+        UrlMapping url = urlRepository.findById(String.valueOf(urlId)).orElseThrow(
+                () -> new UrlNotFoundException("URL not found with id: " + urlId)
+        );
+
+        if (url != null) {
+            urlRepository.delete(url);
+            urlClient.decreaseUrlCount(url.getUserId());
+        }
+    }
+
+    @Override
+    public Page<UrlListResponse> viewAllUrls(int page, int size) {
+        // got the userId from security context: to display urls only for currently loggedIn user.
+        String userId = (String) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        log.info("URL Service :: Fetching urls for userId: {}, page: {}, size: {}", userId, page, size);
+
+        Pageable pageable = PageRequest.of(page - 1, size);
+        Page<UrlMapping> mappings = urlRepository.findByUserId(userId, pageable);
+
+        List<UrlResponse> urlResponses = mappings.getContent()
+                .stream()
+                .map(urlMapper::urlResponseToUser)
+                .toList();
+
+        UrlListResponse urlListResponse = UrlListResponse.builder()
+                .total((int) mappings.getTotalElements())
+                .urlResponseList(urlResponses)
+                .build();
+
+        return new PageImpl<>(List.of(urlListResponse), pageable, mappings.getTotalElements());
+    }
+
+    // helper methods
     private UrlMapping buildAndSaveUrl(UrlRequest urlRequest, String userId) {
         boolean isUrlPasswordProtected = urlRequest.password() != null && !urlRequest.password().isBlank();
         String hashedUrl = null;
@@ -107,7 +153,6 @@ public class UrlServiceImpl implements UrlService {
         }
     }
 
-    // helper method
     private Map<String, String> checkForUserTier() {
         String userId;
         String tier = null;

@@ -1,6 +1,8 @@
 package com.reon.urlservice.respository;
 
 import com.reon.urlservice.model.UrlMapping;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,7 +17,8 @@ import java.util.Optional;
 public interface UrlRepository extends JpaRepository<UrlMapping, String> {
     Optional<UrlMapping> findByShortCode(String shortCode);
     boolean existsByShortCode(String shortCode);
-    List<UrlMapping> findAllByUserId(String userId);
+
+    Page<UrlMapping> findByUserId(String userId, Pageable pageable);
 
     long countByUserIdAndActiveTrue(String userId);
 

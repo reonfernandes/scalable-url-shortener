@@ -11,4 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface UrlClient {
     @PostMapping("/url/increase-count")
     void increaseUrlCount(@RequestParam("userId") String userId);
+
+    @PostMapping("/url/decrease-count")
+    void decreaseUrlCount(@RequestParam("userId") String userId);
 }

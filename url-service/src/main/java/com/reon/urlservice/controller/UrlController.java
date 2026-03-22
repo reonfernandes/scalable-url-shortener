@@ -2,18 +2,17 @@ package com.reon.urlservice.controller;
 
 import com.reon.exception.response.ApiResponse;
 import com.reon.urlservice.dto.UrlRequest;
+import com.reon.urlservice.dto.response.UrlListResponse;
 import com.reon.urlservice.dto.response.UrlResponse;
 import com.reon.urlservice.service.UrlService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/url")
@@ -38,6 +37,37 @@ public class UrlController {
                         HttpStatus.CREATED,
                         "Short URL created",
                         shortUrl
+                ));
+    }
+
+    @PreAuthorize("hasRole('USER')")
+    @DeleteMapping("/delete-url")
+    public ResponseEntity<ApiResponse<Void>> deleteUrl(@RequestParam("urlId") Long urlId) {
+        log.info("Request for deleting url: {}", urlId);
+        urlService.deleteUrl(urlId);
+
+        return ResponseEntity
+                .status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.of(
+                        HttpStatus.NO_CONTENT,
+                        "URL deleted successfully"
+                ));
+    }
+
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/my-urls")
+    public ResponseEntity<ApiResponse<Page<UrlListResponse>>> fetchAllUrls(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
+    ) {
+        Page<UrlListResponse> urlListResponses = urlService.viewAllUrls(page, size);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.of(
+                        HttpStatus.OK,
+                        "Success",
+                        urlListResponses
                 ));
     }
 }

@@ -100,14 +100,27 @@ public class UserController {
 
     @PostMapping("/url/increase-count")
     public ResponseEntity<ApiResponse<Void>> increaseUrlCount(@RequestParam("userId") String userId) {
-        log.info("Updating url count");
+        log.info("Incrementing url count");
         userService.incrementUrlCountForUser(userId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.of(
                         HttpStatus.OK,
-                        "Url count updated"
+                        "Url count increased"
+                ));
+    }
+
+    @PostMapping("/url/decrease-count")
+    public ResponseEntity<ApiResponse<Void>> decreaseUrlCount(@RequestParam("userId") String userId) {
+        log.info("Decrementing url count");
+        userService.decrementUrlCountForUser(userId);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.of(
+                        HttpStatus.OK,
+                        "Url count decreased"
                 ));
     }
 }
