@@ -126,6 +126,38 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.NOT_FOUND, ex.getMessage()));
     }
 
+    @ExceptionHandler(InvalidUrlPasswordException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidUrlPasswordException(InvalidUrlPasswordException ex) {
+        log.warn("Invalid UrlPassword Exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
+    @ExceptionHandler(PasswordRequiredException.class)
+    public ResponseEntity<ErrorResponse> handlePasswordRequiredException(PasswordRequiredException ex) {
+        log.warn("Password Required Exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
+    @ExceptionHandler(UrlExpiredException.class)
+    public ResponseEntity<ErrorResponse> handleUrlExpiredException(UrlExpiredException ex) {
+        log.warn("UrlExpired Exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
+    @ExceptionHandler(UrlNotActiveException.class)
+    public ResponseEntity<ErrorResponse> handleUrlNotActiveException(UrlNotActiveException ex) {
+        log.warn("UrlNotActive Exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
     // common
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
