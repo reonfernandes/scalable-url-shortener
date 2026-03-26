@@ -13,6 +13,7 @@ import com.reon.urlservice.jwt.JwtService;
 import com.reon.urlservice.mapper.UrlMapper;
 import com.reon.urlservice.model.UrlMapping;
 import com.reon.urlservice.respository.UrlRepository;
+import com.reon.urlservice.service.UrlCacheService;
 import com.reon.urlservice.service.UrlClient;
 import com.reon.urlservice.service.UrlService;
 import org.slf4j.Logger;
@@ -43,11 +44,13 @@ public class UrlServiceImpl implements UrlService {
     private final JwtService jwtService;
     private final PasswordEncoder encoder;
     private final UrlClient urlClient;
+    private final UrlCacheService urlCacheService;
 
     public UrlServiceImpl(
             @Value("${security.app.quota.free-tier-limit}") int freeTierLimit,
             @Value("${security.app.quota.premium-tier-limit}") int premiumTierLimit,
-            UrlRepository urlRepository, UrlMapper urlMapper, JwtService jwtService, PasswordEncoder encoder, UrlClient urlClient) {
+            UrlRepository urlRepository, UrlMapper urlMapper, JwtService jwtService, PasswordEncoder encoder,
+            UrlClient urlClient, UrlCacheService urlCacheService) {
         this.freeTierLimit = freeTierLimit;
         this.premiumTierLimit = premiumTierLimit;
         this.urlRepository = urlRepository;
@@ -55,6 +58,7 @@ public class UrlServiceImpl implements UrlService {
         this.jwtService = jwtService;
         this.encoder = encoder;
         this.urlClient = urlClient;
+        this.urlCacheService = urlCacheService;
     }
 
     @Override
@@ -104,6 +108,8 @@ public class UrlServiceImpl implements UrlService {
             String userId = (String) authentication.getPrincipal();
 
             if (url != null && userId.equals(url.getUserId())) {
+                // when url is deleted, remove it from cache also.
+                urlCacheService.evict(url.getShortCode());
                 urlRepository.delete(url);
                 urlClient.decreaseUrlCount(url.getUserId());
             } else {
@@ -168,6 +174,9 @@ public class UrlServiceImpl implements UrlService {
                 throw new UnauthorizedUrlAccessException();
             }
 
+            // capture the shortCode before any changes made to alias - old key in redis
+            String shortCodeToEvict = urlMapping.getShortCode();
+
             if (updateUrlRequest.title() != null && !updateUrlRequest.title().isBlank()) {
                 urlMapping.setTitle(updateUrlRequest.title());
             }
@@ -196,6 +205,7 @@ public class UrlServiceImpl implements UrlService {
             }
 
             urlRepository.save(urlMapping);
+            urlCacheService.evict(shortCodeToEvict);
 
             log.info("URL Service :: Updated URL with id: {}", urlId);
         }

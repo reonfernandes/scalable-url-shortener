@@ -1,5 +1,6 @@
 package com.reon.urlservice.mapper;
 
+import com.reon.urlservice.dto.CachedUrlDTO;
 import com.reon.urlservice.dto.response.UrlResponse;
 import com.reon.urlservice.model.UrlMapping;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,17 @@ public class UrlMapper {
                 .isPasswordProtected(urlMapping.getPasswordHash() != null)
                 .createdAt(urlMapping.getCreatedAt())
                 .expiresOn(urlMapping.getExpiresAt())
+                .build();
+    }
+
+    // useful while caching
+    public UrlResponse urlResponseToUser(CachedUrlDTO urlMapping) {
+        return UrlResponse.builder()
+                .shortCode(urlMapping.shortCode())
+                .longUrl(urlMapping.longUrl())
+                .isActive(urlMapping.active())
+                .expiresOn(urlMapping.expiresAt())
+                .isPasswordProtected(urlMapping.passwordHash() != null)
                 .build();
     }
 
