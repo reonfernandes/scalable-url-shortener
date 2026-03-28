@@ -25,7 +25,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deactivateAccount(@RequestParam(name = "userId") String userId){
         log.info("Deactivating account");
-        userService.deactiveAccount(userId);
+        userService.deactivateAccount(userId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

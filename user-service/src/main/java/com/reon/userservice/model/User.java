@@ -62,7 +62,7 @@ public class User implements UserDetails {
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private boolean active = true;
+    private boolean active = false;
 
     @Column(name = "is_email_verified", nullable = false)
     @Builder.Default

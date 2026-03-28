@@ -1,10 +1,12 @@
 package com.reon.userservice.mapper;
 
+import com.reon.events.RegistrationSuccessEvent;
 import com.reon.userservice.dto.RegistrationRequest;
 import com.reon.userservice.dto.response.RegistrationResponse;
 import com.reon.userservice.dto.response.UserProfile;
 import com.reon.userservice.model.User;
 import com.reon.userservice.model.type.Tier;
+import com.reon.userservice.utils.OTPGenerator;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -33,6 +35,15 @@ public class UserMapper {
                 .tier(user.getTier())
                 .urlsCreated(user.getUrlCount())
                 .urlCreationLimit(getUrlCreationLimit(user.getTier()))
+                .build();
+    }
+
+    public RegistrationSuccessEvent publishRegistrationEvent(User user, String otp) {
+        return RegistrationSuccessEvent.builder()
+                .userId(user.getUserId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .otp(otp)
                 .build();
     }
 

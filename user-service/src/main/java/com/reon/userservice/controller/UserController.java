@@ -39,6 +39,18 @@ public class UserController {
                 ));
     }
 
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<Void>> otpVerification(@RequestParam(name = "email") String email,
+                                                             @RequestParam(name = "otp") String otp) {
+        userService.verifyOtp(email, otp);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.of(
+                        HttpStatus.OK,
+                        "Verification successful"
+                ));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> authentication(
             @Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response){
