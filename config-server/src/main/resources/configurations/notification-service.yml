@@ -3,9 +3,9 @@ server:
 
 spring:
     mail:
+        host: smtp.gmail.com
         username: reonjervasiofernandes@gmail.com
         password: jqcaehkyoiyhcjbm
-        host: smtp.gmail.com
         port: 587
         default-encoding: UTF-8
         properties:
@@ -19,9 +19,30 @@ spring:
                     timeout: 3000
                     writetimeout: 5000
 
+    kafka:
+        consumer:
+            key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+            bootstrap-servers: localhost:9092
+            group-id: notify-group
+            auto-offset-reset: earliest
+            enable-auto-commit: true
+            properties:
+                spring:
+                    json:
+                        trusted:
+                            packages: "*"
+
 eureka:
     client:
         service-url:
             defaultZone: http://localhost:8500/eureka/
     instance:
         prefer-ip-address: true
+
+security:
+    email:
+        sender: reonjervasiofernandes@gmail.com
+    kafka:
+        topic:
+            register: user.registered
