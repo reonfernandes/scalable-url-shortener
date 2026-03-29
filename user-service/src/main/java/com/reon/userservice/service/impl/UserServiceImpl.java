@@ -7,6 +7,7 @@ import com.reon.userservice.dto.RegistrationRequest;
 import com.reon.userservice.dto.UpdateProfileRequest;
 import com.reon.userservice.dto.response.LoginResponse;
 import com.reon.userservice.dto.response.RegistrationResponse;
+import com.reon.userservice.dto.response.UserListResponse;
 import com.reon.userservice.dto.response.UserProfile;
 import com.reon.userservice.jwt.JwtService;
 import com.reon.userservice.mapper.UserMapper;
@@ -24,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -43,6 +45,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -272,11 +275,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Page<UserProfile> fetchAllUsers(int pageNo, int pageSize) {
-        log.info("Fetching all users info from page: {}, pageSize: {}", pageNo, pageSize);
+    public Page<UserListResponse> viewAllUsers(int pageNo, int pageSize) {
         Pageable pageable = PageRequest.of(pageNo - 1, pageSize);
         Page<User> users = userRepository.findAll(pageable);
-        return users.map(userMapper::profileResponse);
+
+        List<UserProfile> userResponse = users.getContent()
+                .stream()
+                .map(userMapper::profileResponse)
+                .toList();
+
+        UserListResponse userListResponse = UserListResponse.builder()
+                .total((int) users.getTotalElements())
+                .userProfileList(userResponse)
+                .build();
+
+        return new PageImpl<>(List.of(userListResponse), pageable, userListResponse.total());
     }
 
     // helper methods

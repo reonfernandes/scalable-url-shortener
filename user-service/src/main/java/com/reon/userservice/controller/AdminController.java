@@ -1,7 +1,7 @@
 package com.reon.userservice.controller;
 
 import com.reon.exception.response.ApiResponse;
-import com.reon.userservice.dto.response.UserProfile;
+import com.reon.userservice.dto.response.UserListResponse;
 import com.reon.userservice.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,16 +49,19 @@ public class AdminController {
                 ));
     }
 
-    @GetMapping("/accounts")
+    @GetMapping(value = "/accounts")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<UserProfile>> getAccounts(@RequestParam(name = "page", defaultValue = "0") int pageNo,
-                                                         @RequestParam(name = "size", defaultValue = "10") int pageSize)
-    {
+    public ResponseEntity<ApiResponse<Page<UserListResponse>>> getAccounts(@RequestParam(name = "page", defaultValue = "0") int pageNo,
+                                                         @RequestParam(name = "size", defaultValue = "10") int pageSize) {
         log.info("Admin Controller :: Fetch all users → page = {}, size = {}", pageNo, pageSize);
-        Page<UserProfile> userProfiles = userService.fetchAllUsers(pageNo, pageSize);
+        Page<UserListResponse> userProfiles = userService.viewAllUsers(pageNo, pageSize);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(userProfiles);
+                .body(ApiResponse.of(
+                        HttpStatus.OK,
+                        "Success",
+                        userProfiles
+                ));
     }
 }
