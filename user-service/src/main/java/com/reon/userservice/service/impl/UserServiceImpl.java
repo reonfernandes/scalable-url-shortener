@@ -98,13 +98,13 @@ public class UserServiceImpl implements UserService {
 
         User saveUser = userRepository.save(user);
 
-        // TODO:: generate otp
+        // generate otp
         String otp = OTPGenerator.generateOTP();
 
-        // TODO:: save the generated otp in redis cache
+        // save the generated otp in redis cache
         otpCache.storeOtp(otp, saveUser.getEmail(), duration);
 
-        // TODO:: publish event after successful registration: OTP [userId, name, email, otp]
+        // publish event after successful registration: OTP [userId, name, email, otp]
         publishRegistrationEvent(saveUser, otp);
 
         return userMapper.mapToResponse(saveUser);
@@ -124,8 +124,8 @@ public class UserServiceImpl implements UserService {
 
         String storedOtp = otpCache.getOtp(email);
 
-        if (!storedOtp.equals(otp)) {
-            log.warn("OTP is invalid.");
+        if (!encoder.matches(otp, storedOtp)) {
+            log.warn("OTP is invalid");
             throw new InvalidOtpException("OTP is invalid");
         }
 
@@ -287,7 +287,7 @@ public class UserServiceImpl implements UserService {
     }
 
     // publish event method
-    private CompletableFuture<SendResult<String, Object>> publishRegistrationEvent(User user, String otp) {
+    private void publishRegistrationEvent(User user, String otp) {
         RegistrationSuccessEvent eventData = userMapper.publishRegistrationEvent(user, otp);
         CompletableFuture<SendResult<String, Object>> publishEvent =
                 kafkaTemplate.send(registerSuccessTopic, user.getUserId(), eventData);
@@ -302,6 +302,5 @@ public class UserServiceImpl implements UserService {
                         result.getRecordMetadata().offset());
             }
         });
-        return publishEvent;
     }
 }
