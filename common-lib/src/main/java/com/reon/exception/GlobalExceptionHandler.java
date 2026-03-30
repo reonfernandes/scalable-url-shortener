@@ -174,6 +174,14 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, exception.getMessage()));
     }
 
+    @ExceptionHandler(UserAlreadyVerifiedException.class)
+    public ResponseEntity<ErrorResponse> handleUserAlreadyVerified(UserAlreadyVerifiedException exception) {
+        log.warn("Already verified: {}", exception.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT, exception.getMessage()));
+    }
+
     // common
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException exception) {
