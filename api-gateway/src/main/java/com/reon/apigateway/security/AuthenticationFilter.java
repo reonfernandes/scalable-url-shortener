@@ -45,6 +45,16 @@ public class AuthenticationFilter implements GatewayFilter {
         String roles = jwtService.getRoles(token);
         String tier = jwtService.getTier(token);
 
+        // Admin route protection
+        String path = exchange.getRequest().getPath().value();
+        if (path.startsWith("/api/v1/admin") && !roles.contains("ROLE_ADMIN")) {
+            log.warn("Gateway :: Access denied to admin route for userId: {}", userId);
+            return forbidden(exchange.getResponse());
+        }
+
+        log.info("Gateway :: Authenticated userId: {}, roles: {}", userId, roles);
+
+
         ServerHttpRequest mutatedRequest = exchange.getRequest()
                 .mutate()
                 .header("X-User-Id", userId)
@@ -58,6 +68,11 @@ public class AuthenticationFilter implements GatewayFilter {
 
     private Mono<Void> unauthorized(ServerHttpResponse response) {
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
+        return response.setComplete();
+    }
+
+    private Mono<Void> forbidden(ServerHttpResponse response) {
+        response.setStatusCode(HttpStatus.FORBIDDEN);
         return response.setComplete();
     }
 }
