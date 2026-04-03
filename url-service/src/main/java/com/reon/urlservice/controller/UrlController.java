@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,7 +24,6 @@ public class UrlController {
         this.urlService = urlService;
     }
 
-    @PreAuthorize("hasRole('USER')")
     @PostMapping("/new")
     public ResponseEntity<ApiResponse<UrlResponse>> generateNewShortUrl(
             @Valid @RequestBody UrlRequest urlRequest){
@@ -41,7 +39,6 @@ public class UrlController {
                 ));
     }
 
-    @PreAuthorize("hasRole('USER')")
     @GetMapping("/my-urls")
     public ResponseEntity<ApiResponse<Page<UrlListResponse>>> fetchAllUrls(
             @RequestParam(name = "page", defaultValue = "1") int page,
@@ -58,7 +55,6 @@ public class UrlController {
                 ));
     }
 
-    @PreAuthorize("hasRole('USER')")
     @PatchMapping("/update-url")
     public ResponseEntity<ApiResponse<UrlResponse>> updateUrl(@RequestParam(name = "urlId") Long urlId,
                                                               @Valid @RequestBody UpdateUrlRequest updateUrlRequest) {
@@ -74,7 +70,6 @@ public class UrlController {
     }
 
 
-    @PreAuthorize("hasRole('USER')")
     @DeleteMapping("/delete-url")
     public ResponseEntity<ApiResponse<Void>> deleteUrl(@RequestParam("urlId") Long urlId) {
         log.info("Request for deleting url: {}", urlId);
