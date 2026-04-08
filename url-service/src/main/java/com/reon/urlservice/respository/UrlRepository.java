@@ -17,6 +17,7 @@ import java.util.Optional;
 public interface UrlRepository extends JpaRepository<UrlMapping, String> {
     Optional<UrlMapping> findByShortCode(String shortCode);
     boolean existsByShortCode(String shortCode);
+    Optional<UrlMapping> findByUserId(String userId);
 
     Page<UrlMapping> findByUserId(String userId, Pageable pageable);
 
@@ -40,4 +41,8 @@ public interface UrlRepository extends JpaRepository<UrlMapping, String> {
     @Modifying
     @Query("UPDATE UrlMapping u SET u.clickCount = u.clickCount + 1 WHERE u.shortCode = :shortCode")
     void incrementClickCount(@Param("shortCode") String shortCode);
+
+    @Modifying
+    @Query("DELETE FROM UrlMapping u WHERE u.userId = :userId")
+    void deleteUserUrls(@Param("userId") String userId);
 }

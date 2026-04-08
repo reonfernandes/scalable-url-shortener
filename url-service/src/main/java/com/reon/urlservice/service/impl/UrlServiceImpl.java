@@ -1,9 +1,6 @@
 package com.reon.urlservice.service.impl;
 
-import com.reon.exception.AliasAlreadyTakenException;
-import com.reon.exception.UnauthorizedUrlAccessException;
-import com.reon.exception.UrlNotFoundException;
-import com.reon.exception.UrlQuotaExceededException;
+import com.reon.exception.*;
 import com.reon.urlservice.common.Base62Encoder;
 import com.reon.urlservice.dto.UpdateUrlRequest;
 import com.reon.urlservice.dto.UrlRequest;
@@ -23,10 +20,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -114,6 +110,13 @@ public class UrlServiceImpl implements UrlService {
             throw new UnauthorizedUrlAccessException();
         }
         log.warn("URl Service :: Url deleted.");
+    }
+
+    @Override
+    @Transactional
+    public void deleteUserUrls(String userId) {
+        urlRepository.deleteUserUrls(userId);
+        log.info("URL Service :: Urls deleted for user: {}", userId);
     }
 
     @Override

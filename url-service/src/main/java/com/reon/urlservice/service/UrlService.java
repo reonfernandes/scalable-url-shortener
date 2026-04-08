@@ -11,4 +11,6 @@ public interface UrlService {
     Page<UrlListResponse> viewAllUrls(int page, int size);
     void updateShortenedUrl(Long urlId, UpdateUrlRequest updateUrlRequest);
     void deleteUrl(Long urlId);
+
+    void deleteUserUrls(String userId);
 }
