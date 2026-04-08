@@ -1,6 +1,7 @@
 package com.reon.userservice.service.impl;
 
 import com.reon.events.RegistrationSuccessEvent;
+import com.reon.events.UserAccountDeletedEvent;
 import com.reon.exception.*;
 import com.reon.userservice.dto.LoginRequest;
 import com.reon.userservice.dto.RegistrationRequest;
@@ -53,8 +54,10 @@ import java.util.concurrent.CompletableFuture;
 public class UserServiceImpl implements UserService {
 
     private final Long expirationTime;
-    private final String registerSuccessTopic;
     private final Long duration;
+
+    private final String registerSuccessTopic;
+    private final String userAccountDeleteTopic;
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     private final UserRepository userRepository;
@@ -69,8 +72,9 @@ public class UserServiceImpl implements UserService {
 
     public UserServiceImpl(
             @Value("${security.jwt.expiration-time}") Long expirationTime,
-            @Value("${security.kafka.topic.register}") String registerSuccessTopic,
             @Value("${security.cache.url-ttl-minutes}") Long duration,
+            @Value("${security.kafka.topic.register}") String registerSuccessTopic,
+            @Value("${security.kafka.topic.deleted}") String userAccountDeleteTopic,
             UserRepository userRepository, UserMapper userMapper, PasswordEncoder encoder, JwtService jwtService,
             AuthenticationManager authenticationManager, CookieService cookieService,
             KafkaTemplate<String, Object> kafkaTemplate, OtpCache otpCache, HttpServletRequest httpRequest
@@ -78,6 +82,7 @@ public class UserServiceImpl implements UserService {
         this.expirationTime = expirationTime;
         this.registerSuccessTopic = registerSuccessTopic;
         this.duration = duration;
+        this.userAccountDeleteTopic = userAccountDeleteTopic;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.encoder = encoder;
@@ -248,6 +253,10 @@ public class UserServiceImpl implements UserService {
             if (user != null) {
                 userRepository.delete(user);
                 log.info("Account deleted: userId={}", userId);
+
+                // publish event
+                publishUserAccountDeletionEvent(userId);
+                log.info("User Service :: Event for user account deletion successful: {}", userId);
             }
             log.warn("User Service :: Profile deleted");
         } else {
@@ -341,6 +350,25 @@ public class UserServiceImpl implements UserService {
                 log.error("Kafka publish failed for userId: {}", user.getUserId(), exception);
             } else {
                 log.info("Kafka event published successfully. topic: {}, partition: {}, offset: {}",
+                        result.getRecordMetadata().topic(),
+                        result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset());
+            }
+        });
+    }
+
+    private void publishUserAccountDeletionEvent(String userId) {
+        UserAccountDeletedEvent deletedEvent = UserAccountDeletedEvent.builder()
+                .userId(userId)
+                .build();
+        CompletableFuture<SendResult<String, Object>> publishEvent =
+                kafkaTemplate.send(userAccountDeleteTopic, deletedEvent);
+
+        publishEvent.whenComplete((result, exception) -> {
+            if (exception != null) {
+                log.error("Kafka publish failed for userId: {}", userId, exception);
+            } else {
+                log.info("Kafka event[delete] published successfully. topic: {}, partition: {}, offset: {}",
                         result.getRecordMetadata().topic(),
                         result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset());
