@@ -57,4 +57,4 @@ security:
             free-tier-limit: 50
             premium-tier-limit: 500
         cache:
-            url-ttl-minutes: 60
+            url-ttl-minutes: 15
