@@ -4,6 +4,7 @@ import lombok.Builder;
 
 @Builder
 public record AdminUserStateControlEvent(
-        String userId
+        String userId,
+        boolean state
 ) {
 }
