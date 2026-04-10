@@ -300,7 +300,7 @@ public class UserServiceImpl implements UserService {
         User user = findIfUserIsActive(userId);
         if (user != null){
             userRepository.deactivateUser(user.getUserId());
-            publishUserStateEvent(userId);
+            publishUserStateEvent(userId, false);
         }
         log.info("User Service :: Account deactivated");
     }
@@ -314,7 +314,7 @@ public class UserServiceImpl implements UserService {
         );
         if (user != null){
             userRepository.activateUser(user.getUserId());
-            publishUserStateEvent(userId);
+            publishUserStateEvent(userId, true);
         }
         log.info("User Service :: Account Activated");
     }
@@ -383,9 +383,10 @@ public class UserServiceImpl implements UserService {
         });
     }
 
-    private void publishUserStateEvent(String userId) {
+    private void publishUserStateEvent(String userId, boolean state) {
         AdminUserStateControlEvent adminStateEvent = AdminUserStateControlEvent.builder()
                 .userId(userId)
+                .state(state)
                 .build();
         CompletableFuture<SendResult<String, Object>> adminPublishedEvent =
                 kafkaTemplate.send(adminStateTopic, userId, adminStateEvent);
