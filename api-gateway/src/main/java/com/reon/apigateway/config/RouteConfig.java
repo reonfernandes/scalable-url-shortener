@@ -35,6 +35,10 @@ public class RouteConfig {
                         .path("/api/v1/url/**")
                         .filters(authFilter -> authFilter.filter(authenticationFilter))
                         .uri("lb://url-service"))
+                .route("analytics-service", route -> route
+                        .path("/api/v1/analytics/**")
+                        .filters(authFilter -> authFilter.filter(authenticationFilter))
+                        .uri("lb://analytics-service"))
                 .build();
     }
 }
