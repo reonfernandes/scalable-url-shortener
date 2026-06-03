@@ -81,6 +81,7 @@
         <module>url-service</module>
         <module>notification-service</module>
         <module>api-gateway</module>
+        <module>analytics-service</module>
     </modules>
 
 </project>
