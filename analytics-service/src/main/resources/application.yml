@@ -1,0 +1,5 @@
+spring:
+    application:
+        name: analytics-service
+    config:
+        import: optional:configserver:http://localhost:8600
