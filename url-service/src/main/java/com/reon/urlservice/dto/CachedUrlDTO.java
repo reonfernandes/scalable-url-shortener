@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 
 @Builder
 public record CachedUrlDTO(
+        Long urlId,
+        String userId,
         String shortCode,
         String longUrl,
         String passwordHash,

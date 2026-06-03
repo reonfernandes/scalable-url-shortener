@@ -34,7 +34,10 @@ public class UrlMapper {
     // useful while caching
     public UrlResponse urlResponseToUser(CachedUrlDTO urlMapping) {
         return UrlResponse.builder()
+                .urlId(urlMapping.urlId())
+                .userId(urlMapping.userId())
                 .shortCode(urlMapping.shortCode())
+                .shortUrl(buildShortUrl(urlMapping.shortCode()))
                 .longUrl(urlMapping.longUrl())
                 .isActive(urlMapping.active())
                 .expiresOn(urlMapping.expiresAt())

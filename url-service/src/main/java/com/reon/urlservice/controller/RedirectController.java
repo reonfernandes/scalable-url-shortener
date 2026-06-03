@@ -24,10 +24,24 @@ public class RedirectController {
 
     @GetMapping("/{shortCode}")
     public ResponseEntity<Void> redirectUser(@PathVariable(name = "shortCode") String shortCode,
-                                             @RequestParam(name = "password", required = false) String password) {
+                                             @RequestParam(name = "password", required = false) String password,
+                                             jakarta.servlet.http.HttpServletRequest request) {
         log.info("Redirect Controller :: Incoming request for redirecting shortUrl: {}", shortCode);
 
-        UrlResponse urlResponse = redirectService.redirectUserToOriginalUrl(new RedirectRequest(shortCode, password));
+        String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty()) {
+            ipAddress = request.getRemoteAddr();
+        }
+
+        RedirectRequest redirectRequest = RedirectRequest.builder()
+                .shortCode(shortCode)
+                .password(password)
+                .ipAddress(ipAddress)
+                .userAgent(request.getHeader("User-Agent"))
+                .referrer(request.getHeader("Referer"))
+                .build();
+
+        UrlResponse urlResponse = redirectService.redirectUserToOriginalUrl(redirectRequest);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setLocation(URI.create(urlResponse.longUrl()));

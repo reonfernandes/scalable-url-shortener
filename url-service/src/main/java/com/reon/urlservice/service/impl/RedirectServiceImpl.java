@@ -1,6 +1,10 @@
 package com.reon.urlservice.service.impl;
 
-import com.reon.exception.*;
+import com.reon.events.UrlClickEvent;
+import com.reon.exception.InvalidUrlPasswordException;
+import com.reon.exception.PasswordRequiredException;
+import com.reon.exception.UrlExpiredException;
+import com.reon.exception.UrlNotActiveException;
 import com.reon.urlservice.dto.CachedUrlDTO;
 import com.reon.urlservice.dto.RedirectRequest;
 import com.reon.urlservice.dto.response.UrlResponse;
@@ -10,6 +14,7 @@ import com.reon.urlservice.service.RedirectService;
 import com.reon.urlservice.service.UrlCacheService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +29,15 @@ public class RedirectServiceImpl implements RedirectService {
     private final UrlMapper urlMapper;
     private final PasswordEncoder encoder;
     private final UrlCacheService urlCacheService;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public RedirectServiceImpl(UrlRepository urlRepository, UrlMapper urlMapper, PasswordEncoder encoder, UrlCacheService urlCacheService) {
+    public RedirectServiceImpl(UrlRepository urlRepository, UrlMapper urlMapper, PasswordEncoder encoder,
+                               UrlCacheService urlCacheService, KafkaTemplate<String, Object> kafkaTemplate) {
         this.urlRepository = urlRepository;
         this.urlMapper = urlMapper;
         this.encoder = encoder;
         this.urlCacheService = urlCacheService;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @Override
@@ -63,8 +71,27 @@ public class RedirectServiceImpl implements RedirectService {
         urlRepository.incrementClickCount(redirectRequest.shortCode());
         log.info("Redirect Service :: Redirected to original url: shortCode: {}", redirectRequest.shortCode());
 
-        // todo:: publish event - link.clicked
+        publishClickEvent(redirectRequest, url);
 
         return urlMapper.urlResponseToUser(url);
+    }
+
+    private void publishClickEvent(RedirectRequest request, CachedUrlDTO url) {
+        UrlClickEvent event = UrlClickEvent.builder()
+                .shortCode(url.shortCode())
+                .urlId(String.valueOf(url.urlId()))
+                .userId(url.userId())
+                .ipAddress(request.ipAddress())
+                .userAgent(request.userAgent())
+                .referrer(request.referrer())
+                .clickedAt(LocalDateTime.now())
+                .build();
+
+        try {
+            kafkaTemplate.send("url-clicked", event);
+            log.info("Redirect Service :: Published UrlClickEvent for shortCode: {}", url.shortCode());
+        } catch (Exception e) {
+            log.error("Redirect Service :: Failed to publish UrlClickEvent for shortCode: {}", url.shortCode(), e);
+        }
     }
 }

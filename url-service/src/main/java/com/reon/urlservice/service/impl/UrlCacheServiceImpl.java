@@ -59,6 +59,8 @@ public class UrlCacheServiceImpl implements UrlCacheService {
 
     private CachedUrlDTO mapToUrlCacheResponse(UrlMapping urlMapping) {
         return CachedUrlDTO.builder()
+                .urlId(urlMapping.getUrlId())
+                .userId(urlMapping.getUserId())
                 .shortCode(urlMapping.getShortCode())
                 .longUrl(urlMapping.getLongUrl())
                 .passwordHash(urlMapping.getPasswordHash())
