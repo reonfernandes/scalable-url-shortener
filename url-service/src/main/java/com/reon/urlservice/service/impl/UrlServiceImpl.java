@@ -10,7 +10,7 @@ import com.reon.urlservice.mapper.UrlMapper;
 import com.reon.urlservice.model.UrlMapping;
 import com.reon.urlservice.respository.UrlRepository;
 import com.reon.urlservice.service.UrlCacheService;
-import com.reon.urlservice.service.UrlClient;
+import com.reon.urlservice.client.UserServiceClient;
 import com.reon.urlservice.service.UrlService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -38,7 +38,7 @@ public class UrlServiceImpl implements UrlService {
     private final UrlRepository urlRepository;
     private final UrlMapper urlMapper;
     private final PasswordEncoder encoder;
-    private final UrlClient urlClient;
+    private final UserServiceClient userServiceClient;
     private final UrlCacheService urlCacheService;
     private final HttpServletRequest httpRequest;
 
@@ -46,13 +46,13 @@ public class UrlServiceImpl implements UrlService {
             @Value("${security.app.quota.free-tier-limit}") int freeTierLimit,
             @Value("${security.app.quota.premium-tier-limit}") int premiumTierLimit,
             UrlRepository urlRepository, UrlMapper urlMapper, PasswordEncoder encoder,
-            UrlClient urlClient, UrlCacheService urlCacheService, HttpServletRequest httpRequest) {
+            UserServiceClient userServiceClient, UrlCacheService urlCacheService, HttpServletRequest httpRequest) {
         this.freeTierLimit = freeTierLimit;
         this.premiumTierLimit = premiumTierLimit;
         this.urlRepository = urlRepository;
         this.urlMapper = urlMapper;
         this.encoder = encoder;
-        this.urlClient = urlClient;
+        this.userServiceClient = userServiceClient;
         this.urlCacheService = urlCacheService;
         this.httpRequest = httpRequest;
     }
@@ -88,7 +88,7 @@ public class UrlServiceImpl implements UrlService {
         UrlMapping saveUrl = buildAndSaveUrl(urlRequest, userId);
 
         // feign call to user service to update the url count field.
-        urlClient.increaseUrlCount(userId);
+        userServiceClient.increaseUrlCount(userId);
 
         log.info("URL Service :: Short URL created — shortCode: {}, userId: {}", saveUrl.getShortCode(), userId);
         return urlMapper.urlResponseToUser(saveUrl);
@@ -107,7 +107,7 @@ public class UrlServiceImpl implements UrlService {
         if (userId.equals(url.getUserId())) {
             urlCacheService.evict(url.getShortCode());
             urlRepository.delete(url);
-            urlClient.decreaseUrlCount(url.getUserId());
+            userServiceClient.decreaseUrlCount(url.getUserId());
         } else {
             throw new UnauthorizedUrlAccessException();
         }
