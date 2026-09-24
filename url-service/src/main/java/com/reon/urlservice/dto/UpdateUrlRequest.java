@@ -19,9 +19,10 @@ public record UpdateUrlRequest(
         @Size(max = 2048, message = "URL must not exceed 2048 characters")
         String longUrl,
 
+        // at least 7 characters, so an alias can never clash with the 6-character generated codes
         @Pattern(
-                regexp = "^[a-zA-Z0-9\\-]{3,30}$",
-                message = "Custom alias must be 3–30 characters: letters, numbers, or hyphens only"
+                regexp = "^[a-zA-Z0-9\\-]{7,30}$",
+                message = "Custom alias must be 7–30 characters: letters, numbers, or hyphens only"
         )
         String customAlias,
 

@@ -58,6 +58,7 @@ public class UrlServiceImpl implements UrlService {
     }
 
     @Override
+    @Transactional
     public UrlResponse shortenUrl(UrlRequest urlRequest) {
         log.info("URL Service :: Processing new short url generation");
         Map<String, String> userTier = checkForUserTier();
@@ -78,7 +79,8 @@ public class UrlServiceImpl implements UrlService {
 
         // check for custom alias
         String requestedAlias = urlRequest.customAlias();
-        if (urlRepository.existsByShortCode(requestedAlias)) {
+        boolean hasAlias = requestedAlias != null && !requestedAlias.isBlank();
+        if (hasAlias && urlRepository.existsByShortCode(requestedAlias)) {
             log.info("Custom Alias: {}, not available", requestedAlias);
             throw new AliasAlreadyTakenException("Custom alias not available.");
         }
