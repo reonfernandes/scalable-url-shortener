@@ -43,6 +43,9 @@ public interface UrlRepository extends JpaRepository<UrlMapping, String> {
     void incrementClickCount(@Param("shortCode") String shortCode);
 
     // for kafka events
+    @Query("SELECT u.shortCode FROM UrlMapping u WHERE u.userId = :userId")
+    List<String> findShortCodesByUserId(@Param("userId") String userId);
+
     @Modifying
     @Query("DELETE FROM UrlMapping u WHERE u.userId = :userId")
     void deleteUserUrls(@Param("userId") String userId);
