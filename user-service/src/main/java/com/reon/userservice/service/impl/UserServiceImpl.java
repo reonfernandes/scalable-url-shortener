@@ -4,12 +4,12 @@ import com.reon.events.AdminUserStateControlEvent;
 import com.reon.events.RegistrationSuccessEvent;
 import com.reon.events.UserAccountDeletedEvent;
 import com.reon.exception.*;
+import com.reon.exception.response.PageResponse;
 import com.reon.userservice.dto.LoginRequest;
 import com.reon.userservice.dto.RegistrationRequest;
 import com.reon.userservice.dto.UpdateProfileRequest;
 import com.reon.userservice.dto.response.LoginResponse;
 import com.reon.userservice.dto.response.RegistrationResponse;
-import com.reon.userservice.dto.response.UserListResponse;
 import com.reon.userservice.dto.response.UserProfile;
 import com.reon.userservice.jwt.JwtService;
 import com.reon.userservice.mapper.UserMapper;
@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -48,7 +47,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumSet;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -203,8 +201,8 @@ public class UserServiceImpl implements UserService {
                 ResponseCookie accessTokenCookie = cookieService.accessTokenCookie(accessToken);
                 response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
 
+                // the token is only sent in the HttpOnly cookie, so page JavaScript can never read it
                 return LoginResponse.builder()
-                        .accessToken(accessToken)
                         .expiresIn(expirationTime)
                         .build();
             }
@@ -220,7 +218,6 @@ public class UserServiceImpl implements UserService {
         }
 
         return LoginResponse.builder()
-                .accessToken(null)
                 .expiresIn(0)
                 .build();
     }
@@ -342,23 +339,20 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Page<UserListResponse> viewAllUsers(int pageNo, int pageSize) {
-        log.info("User Service :: Retrieving users info from page:{} of size:{}", pageNo, pageSize);
-        Pageable pageable = PageRequest.of(pageNo - 1, pageSize);
-        Page<User> users = userRepository.findAll(pageable);
+    public PageResponse<UserProfile> viewAllUsers(int pageNo, int pageSize) {
+        if (pageNo < 1 || pageSize < 1) {
+            throw new IllegalArgumentException("page and size must be 1 or more");
+        }
+        int size = Math.min(pageSize, PageResponse.MAX_PAGE_SIZE);
 
-        List<UserProfile> userResponse = users.getContent()
-                .stream()
-                .map(userMapper::profileResponse)
-                .toList();
-
-        UserListResponse userListResponse = UserListResponse.builder()
-                .total((int) users.getTotalElements())
-                .userProfileList(userResponse)
-                .build();
+        log.info("User Service :: Retrieving users info from page:{} of size:{}", pageNo, size);
+        // Spring Data counts pages from 0, our API counts from 1
+        Pageable pageable = PageRequest.of(pageNo - 1, size);
+        Page<UserProfile> users = userRepository.findAll(pageable)
+                .map(userMapper::profileResponse);
 
         log.info("User Service :: Users data retrieval successful");
-        return new PageImpl<>(List.of(userListResponse), pageable, userListResponse.total());
+        return new PageResponse<>(users.getContent(), pageNo, size, users.getTotalElements(), users.getTotalPages());
     }
 
     // helper methods

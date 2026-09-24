@@ -1,30 +1,28 @@
 package com.reon.urlservice.service.impl;
 
 import com.reon.exception.*;
+import com.reon.exception.response.PageResponse;
 import com.reon.urlservice.common.Base62Encoder;
 import com.reon.urlservice.dto.UpdateUrlRequest;
 import com.reon.urlservice.dto.UrlRequest;
-import com.reon.urlservice.dto.response.UrlListResponse;
 import com.reon.urlservice.dto.response.UrlResponse;
 import com.reon.urlservice.mapper.UrlMapper;
 import com.reon.urlservice.model.UrlMapping;
-import com.reon.urlservice.respository.UrlRepository;
+import com.reon.urlservice.repository.UrlRepository;
 import com.reon.urlservice.service.UrlCacheService;
-import com.reon.urlservice.service.UrlClient;
+import com.reon.urlservice.client.UserServiceClient;
 import com.reon.urlservice.service.UrlService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Map;
 
 @Service
@@ -38,7 +36,7 @@ public class UrlServiceImpl implements UrlService {
     private final UrlRepository urlRepository;
     private final UrlMapper urlMapper;
     private final PasswordEncoder encoder;
-    private final UrlClient urlClient;
+    private final UserServiceClient userServiceClient;
     private final UrlCacheService urlCacheService;
     private final HttpServletRequest httpRequest;
 
@@ -46,13 +44,13 @@ public class UrlServiceImpl implements UrlService {
             @Value("${security.app.quota.free-tier-limit}") int freeTierLimit,
             @Value("${security.app.quota.premium-tier-limit}") int premiumTierLimit,
             UrlRepository urlRepository, UrlMapper urlMapper, PasswordEncoder encoder,
-            UrlClient urlClient, UrlCacheService urlCacheService, HttpServletRequest httpRequest) {
+            UserServiceClient userServiceClient, UrlCacheService urlCacheService, HttpServletRequest httpRequest) {
         this.freeTierLimit = freeTierLimit;
         this.premiumTierLimit = premiumTierLimit;
         this.urlRepository = urlRepository;
         this.urlMapper = urlMapper;
         this.encoder = encoder;
-        this.urlClient = urlClient;
+        this.userServiceClient = userServiceClient;
         this.urlCacheService = urlCacheService;
         this.httpRequest = httpRequest;
     }
@@ -88,7 +86,7 @@ public class UrlServiceImpl implements UrlService {
         UrlMapping saveUrl = buildAndSaveUrl(urlRequest, userId);
 
         // feign call to user service to update the url count field.
-        urlClient.increaseUrlCount(userId);
+        userServiceClient.increaseUrlCount(userId);
 
         log.info("URL Service :: Short URL created — shortCode: {}, userId: {}", saveUrl.getShortCode(), userId);
         return urlMapper.urlResponseToUser(saveUrl);
@@ -100,14 +98,14 @@ public class UrlServiceImpl implements UrlService {
         if (userId == null) throw new UnauthorizedUrlAccessException();
 
         log.warn("URL Service :: Deleting url with id: {}", urlId);
-        UrlMapping url = urlRepository.findById(String.valueOf(urlId)).orElseThrow(
+        UrlMapping url = urlRepository.findById(urlId).orElseThrow(
                 () -> new UrlNotFoundException("URL not found with id: " + urlId)
         );
 
         if (userId.equals(url.getUserId())) {
             urlCacheService.evict(url.getShortCode());
             urlRepository.delete(url);
-            urlClient.decreaseUrlCount(url.getUserId());
+            userServiceClient.decreaseUrlCount(url.getUserId());
         } else {
             throw new UnauthorizedUrlAccessException();
         }
@@ -141,27 +139,24 @@ public class UrlServiceImpl implements UrlService {
     }
 
     @Override
-    public Page<UrlListResponse> viewAllUrls(int page, int size) {
+    public PageResponse<UrlResponse> viewAllUrls(int page, int size) {
         String userId = httpRequest.getHeader("X-User-Id");
         if (userId == null) throw new UnauthorizedUrlAccessException();
 
-        log.info("URL Service :: Fetching urls for userId: {}, page: {}, size: {}", userId, page, size);
+        if (page < 1 || size < 1) {
+            throw new IllegalArgumentException("page and size must be 1 or more");
+        }
+        int pageSize = Math.min(size, PageResponse.MAX_PAGE_SIZE);
 
-        Pageable pageable = PageRequest.of(page - 1, size);
-        Page<UrlMapping> mappings = urlRepository.findByUserId(userId, pageable);
+        log.info("URL Service :: Fetching urls for userId: {}, page: {}, size: {}", userId, page, pageSize);
 
-        List<UrlResponse> urlResponses = mappings.getContent()
-                .stream()
-                .map(urlMapper::urlResponseToUser)
-                .toList();
-
-        UrlListResponse urlListResponse = UrlListResponse.builder()
-                .total((int) mappings.getTotalElements())
-                .urlResponseList(urlResponses)
-                .build();
+        // Spring Data counts pages from 0, our API counts from 1
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Page<UrlResponse> urls = urlRepository.findByUserId(userId, pageable)
+                .map(urlMapper::urlResponseToUser);
 
         log.info("Url Service :: Urls data retrieval successful");
-        return new PageImpl<>(List.of(urlListResponse), pageable, mappings.getTotalElements());
+        return new PageResponse<>(urls.getContent(), page, pageSize, urls.getTotalElements(), urls.getTotalPages());
     }
 
     @Override
@@ -171,7 +166,7 @@ public class UrlServiceImpl implements UrlService {
 
         log.info("URL Service :: Updating url for user: {}", userId);
 
-        UrlMapping urlMapping = urlRepository.findById(String.valueOf(urlId)).orElseThrow(
+        UrlMapping urlMapping = urlRepository.findById(urlId).orElseThrow(
                 () -> new UrlNotFoundException("URL not found with id: " + urlId)
         );
 

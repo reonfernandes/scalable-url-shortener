@@ -6,7 +6,6 @@ import com.reon.userservice.dto.response.RegistrationResponse;
 import com.reon.userservice.dto.response.UserProfile;
 import com.reon.userservice.model.User;
 import com.reon.userservice.model.type.Tier;
-import com.reon.userservice.utils.OTPGenerator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

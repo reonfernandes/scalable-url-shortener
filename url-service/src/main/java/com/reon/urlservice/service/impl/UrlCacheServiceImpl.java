@@ -33,7 +33,7 @@ public class UrlCacheServiceImpl implements UrlCacheService {
     public CachedUrlDTO getOrLoad(String shortCode, Supplier<Optional<UrlMapping>> dbLoader) {
         String key = buildKey(shortCode);
 
-        CachedUrlDTO cached = redisTemplate.opsForValue().get(key);
+        CachedUrlDTO cached = readFromCache(key);
         if (cached != null) {
             log.info("Cached hit :: ShortCode: {}", shortCode);
             return cached;
@@ -44,16 +44,38 @@ public class UrlCacheServiceImpl implements UrlCacheService {
                 .orElseThrow(() -> new UrlNotFoundException("URL not found"));
 
         CachedUrlDTO cachedDTO = mapToUrlCacheResponse(urlMapping);
-        redisTemplate.opsForValue().set(key, cachedDTO, ttlMinutes, TimeUnit.MINUTES);
-        log.info("Cached shortCode: {} | TTL: {} min", shortCode, ttlMinutes);
+        writeToCache(key, cachedDTO);
 
         return cachedDTO;
     }
 
     @Override
     public void evict(String shortCode) {
-        boolean deleted = redisTemplate.delete(buildKey(shortCode));
-        log.info("Cache evicted :: shortCode: {} | deleted: {}", shortCode, deleted);
+        try {
+            boolean deleted = redisTemplate.delete(buildKey(shortCode));
+            log.info("Cache evicted :: shortCode: {} | deleted: {}", shortCode, deleted);
+        } catch (RuntimeException exception) {
+            log.error("Redis unavailable, could not evict shortCode: {}", shortCode, exception);
+        }
+    }
+
+    // if Redis is down we skip the cache and use the database, so redirects keep working
+    private CachedUrlDTO readFromCache(String key) {
+        try {
+            return redisTemplate.opsForValue().get(key);
+        } catch (RuntimeException exception) {
+            log.warn("Redis unavailable, reading from database instead: {}", exception.getMessage());
+            return null;
+        }
+    }
+
+    private void writeToCache(String key, CachedUrlDTO cachedDTO) {
+        try {
+            redisTemplate.opsForValue().set(key, cachedDTO, ttlMinutes, TimeUnit.MINUTES);
+            log.info("Cached key: {} | TTL: {} min", key, ttlMinutes);
+        } catch (RuntimeException exception) {
+            log.warn("Redis unavailable, could not cache key: {}", key);
+        }
     }
 
 

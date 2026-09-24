@@ -8,16 +8,21 @@ spring:
     kafka:
         consumer:
             key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-            value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+            # ErrorHandlingDeserializer skips a message that can't be read instead of failing on it forever
+            value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
             bootstrap-servers: localhost:9092
             group-id: analytics-service-group
             auto-offset-reset: earliest
             enable-auto-commit: true
             properties:
                 spring:
+                    deserializer:
+                        value:
+                            delegate:
+                                class: org.springframework.kafka.support.serializer.JsonDeserializer
                     json:
                         trusted:
-                            packages: "*"
+                            packages: com.reon.events
 eureka:
     client:
         service-url:

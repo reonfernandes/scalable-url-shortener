@@ -3,7 +3,9 @@ package com.reon.userservice.controller;
 import com.reon.exception.response.ApiResponse;
 import com.reon.userservice.dto.LoginRequest;
 import com.reon.userservice.dto.RegistrationRequest;
+import com.reon.userservice.dto.ResendOtpRequest;
 import com.reon.userservice.dto.UpdateProfileRequest;
+import com.reon.userservice.dto.VerifyOtpRequest;
 import com.reon.userservice.dto.response.LoginResponse;
 import com.reon.userservice.dto.response.RegistrationResponse;
 import com.reon.userservice.dto.response.UserProfile;
@@ -46,10 +48,9 @@ public class UserController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<ApiResponse<Void>> otpVerification(@RequestParam(name = "email") String email,
-                                                             @RequestParam(name = "otp") String otp) {
-        log.info("User Controller :: Incoming request for Otp verification: {}", email);
-        userService.verifyOtp(email, otp);
+    public ResponseEntity<ApiResponse<Void>> otpVerification(@Valid @RequestBody VerifyOtpRequest request) {
+        log.info("User Controller :: Incoming request for Otp verification: {}", request.email());
+        userService.verifyOtp(request.email(), request.otp());
         log.info("User Controller :: Outgoing request: Account verified successfully");
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -60,9 +61,9 @@ public class UserController {
     }
 
     @PostMapping("/resend-otp")
-    public ResponseEntity<ApiResponse<Void>> resendOtp(@RequestParam(name = "email") String email) {
-        log.info("User Controller :: Incoming request for resending Otp: {}", email);
-        userService.resendOtp(email);
+    public ResponseEntity<ApiResponse<Void>> resendOtp(@Valid @RequestBody ResendOtpRequest request) {
+        log.info("User Controller :: Incoming request for resending Otp: {}", request.email());
+        userService.resendOtp(request.email());
         log.info("User Controller :: Outgoing request: Otp resent successfully");
         return ResponseEntity
                 .status(HttpStatus.OK)

@@ -9,7 +9,7 @@ import com.reon.urlservice.dto.CachedUrlDTO;
 import com.reon.urlservice.dto.RedirectRequest;
 import com.reon.urlservice.dto.response.UrlResponse;
 import com.reon.urlservice.mapper.UrlMapper;
-import com.reon.urlservice.respository.UrlRepository;
+import com.reon.urlservice.repository.UrlRepository;
 import com.reon.urlservice.service.RedirectService;
 import com.reon.urlservice.service.UrlCacheService;
 import org.slf4j.Logger;
