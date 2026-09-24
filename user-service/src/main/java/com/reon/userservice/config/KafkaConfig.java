@@ -57,7 +57,7 @@ public class KafkaConfig {
     @Bean
     public NewTopic adminUserState() {
         return TopicBuilder
-                .name(userAccountDeleteTopic)
+                .name(adminStateTopic)
                 .partitions(4)
                 .replicas(1)
                 .build();
