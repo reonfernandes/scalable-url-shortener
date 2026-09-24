@@ -18,8 +18,6 @@ public interface UserService {
 
     void deleteAccount(String userId);
 
-    void verifyOtp(String email, String otp);
-    void resendOtp(String email);
 
     void incrementUrlCountForUser(String userId);
     void decrementUrlCountForUser(String userId);

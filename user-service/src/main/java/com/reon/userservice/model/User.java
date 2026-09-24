@@ -61,13 +61,10 @@ public class User implements UserDetails {
     @Builder.Default
     private Set<Role> role = new HashSet<>();
 
+    // new accounts are active straight away; an admin can deactivate them
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private boolean active = false;
-
-    @Column(name = "is_email_verified", nullable = false)
-    @Builder.Default
-    private boolean emailVerified = false;
+    private boolean active = true;
 
     @Column(name = "url_count", nullable = false)
     @Builder.Default

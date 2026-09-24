@@ -207,30 +207,6 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, exception.getMessage()));
     }
 
-    @ExceptionHandler(InvalidOtpException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidOtpException(InvalidOtpException exception) {
-        log.warn("Invalid Otp Exception: {}", exception.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, exception.getMessage()));
-    }
-
-    @ExceptionHandler(OtpExpiredException.class)
-    public ResponseEntity<ErrorResponse> handleOtpExpiredException(OtpExpiredException exception) {
-        log.warn("Otp Expired Exception: {}", exception.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, exception.getMessage()));
-    }
-
-    @ExceptionHandler(UserAlreadyVerifiedException.class)
-    public ResponseEntity<ErrorResponse> handleUserAlreadyVerified(UserAlreadyVerifiedException exception) {
-        log.warn("Already verified: {}", exception.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ErrorResponse.of(HttpStatus.CONFLICT, exception.getMessage()));
-    }
-
     @ExceptionHandler(ForbiddenOperationException.class)
     public ResponseEntity<ErrorResponse> handleForbiddenOperation(ForbiddenOperationException exception) {
         log.warn("Forbidden operation: {}", exception.getMessage());

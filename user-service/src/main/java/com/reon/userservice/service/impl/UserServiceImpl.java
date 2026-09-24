@@ -1,7 +1,6 @@
 package com.reon.userservice.service.impl;
 
 import com.reon.events.AdminUserStateControlEvent;
-import com.reon.events.RegistrationSuccessEvent;
 import com.reon.events.UserAccountDeletedEvent;
 import com.reon.exception.*;
 import com.reon.exception.response.PageResponse;
@@ -19,9 +18,7 @@ import com.reon.userservice.model.type.Role;
 import com.reon.userservice.model.type.Tier;
 import com.reon.userservice.repository.UserRepository;
 import com.reon.userservice.service.CookieService;
-import com.reon.userservice.service.OtpCache;
 import com.reon.userservice.service.UserService;
-import com.reon.userservice.utils.OTPGenerator;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -53,9 +50,7 @@ import java.util.concurrent.CompletableFuture;
 public class UserServiceImpl implements UserService {
 
     private final Long expirationTime;
-    private final Long duration;
 
-    private final String registerSuccessTopic;
     private final String userAccountDeleteTopic;
 
     private final String adminStateTopic;
@@ -68,22 +63,17 @@ public class UserServiceImpl implements UserService {
     private final AuthenticationManager authenticationManager;
     private final CookieService cookieService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final OtpCache otpCache;
     private final HttpServletRequest httpRequest;
 
     public UserServiceImpl(
             @Value("${security.jwt.expiration-time}") Long expirationTime,
-            @Value("${security.otp.expiration-minutes}") Long duration,
-            @Value("${security.kafka.topic.register}") String registerSuccessTopic,
             @Value("${security.kafka.topic.deleted}") String userAccountDeleteTopic,
             @Value("${security.kafka.topic.admin.userState}") String adminStateTopic,
             UserRepository userRepository, UserMapper userMapper, PasswordEncoder encoder, JwtService jwtService,
             AuthenticationManager authenticationManager, CookieService cookieService,
-            KafkaTemplate<String, Object> kafkaTemplate, OtpCache otpCache, HttpServletRequest httpRequest
+            KafkaTemplate<String, Object> kafkaTemplate, HttpServletRequest httpRequest
     ) {
         this.expirationTime = expirationTime;
-        this.registerSuccessTopic = registerSuccessTopic;
-        this.duration = duration;
         this.userAccountDeleteTopic = userAccountDeleteTopic;
         this.adminStateTopic = adminStateTopic;
         this.userRepository = userRepository;
@@ -93,7 +83,6 @@ public class UserServiceImpl implements UserService {
         this.authenticationManager = authenticationManager;
         this.cookieService = cookieService;
         this.kafkaTemplate = kafkaTemplate;
-        this.otpCache = otpCache;
         this.httpRequest = httpRequest;
     }
 
@@ -115,74 +104,7 @@ public class UserServiceImpl implements UserService {
         User saveUser = userRepository.save(user);
         log.info("User Service :: Newly created user profile saved successfully: {}", registrationRequest.email());
 
-        // generate otp
-        String otp = OTPGenerator.generateOTP();
-
-        // save the generated otp in redis cache
-        otpCache.storeOtp(otp, saveUser.getEmail(), duration);
-
-        log.info("User Service :: Publishing event for successful user registration: {}", registrationRequest.email());
-        // publish event after successful registration: OTP [userId, name, email, otp]
-        publishRegistrationEvent(saveUser, otp);
-        log.info("User Service :: Event published for successful user registration: {}", registrationRequest.email());
-
         return userMapper.mapToResponse(saveUser);
-    }
-
-    @Override
-    @Transactional
-    public void verifyOtp(String email, String otp) {
-
-        log.info("User Service :: Verifying Otp for user: {}", email);
-
-        // fetch user
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-        if (user.isEmailVerified()) {
-            log.info("User already verified: {}", email);
-            throw new UserAlreadyVerifiedException("User is already verified");
-        }
-
-        String storedOtp = otpCache.getOtp(email);
-
-        if (storedOtp == null) {
-            log.warn("OTP not found or expired for email: {}", email);
-            throw new OtpExpiredException("OTP has expired or does not exist");
-        }
-
-        if (!encoder.matches(otp, storedOtp)) {
-            log.warn("Invalid OTP attempt for email: {}", email);
-            throw new InvalidOtpException("OTP is invalid");
-        }
-
-        userRepository.verifyEmail(user.getUserId());
-        userRepository.activateUser(user.getUserId());
-
-        otpCache.deleteOtp(email);
-
-        log.info("User Service : Email verified successfully for userId: {}", user.getUserId());
-    }
-
-    @Override
-    public void resendOtp(String email) {
-        log.info("User Service :: Resending Otp for user: {}", email);
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-        if (user.isEmailVerified()) {
-            log.info("User already verified: {}", email);
-            throw new UserAlreadyVerifiedException("User is already verified");
-        }
-
-        // new otp replaces the old one in redis
-        String otp = OTPGenerator.generateOTP();
-        otpCache.storeOtp(otp, user.getEmail(), duration);
-
-        // same event as registration, so the notification service sends the otp mail again
-        publishRegistrationEvent(user, otp);
-        log.info("User Service :: Otp resent for user: {}", email);
     }
 
     @Override
@@ -362,24 +284,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
-    // publish event method
-    private void publishRegistrationEvent(User user, String otp) {
-        RegistrationSuccessEvent eventData = userMapper.publishRegistrationEvent(user, otp);
-        CompletableFuture<SendResult<String, Object>> publishEvent =
-                kafkaTemplate.send(registerSuccessTopic, user.getUserId(), eventData);
-
-        publishEvent.whenComplete((result, exception) -> {
-            if (exception != null) {
-                log.error("Kafka publish failed for userId: {}", user.getUserId(), exception);
-            } else {
-                log.info("Kafka event published successfully. topic: {}, partition: {}, offset: {}",
-                        result.getRecordMetadata().topic(),
-                        result.getRecordMetadata().partition(),
-                        result.getRecordMetadata().offset());
-            }
-        });
-    }
-
+    // publish event methods
     private void publishUserAccountDeletionEvent(String userId) {
         UserAccountDeletedEvent deletedEvent = UserAccountDeletedEvent.builder()
                 .userId(userId)

@@ -22,20 +22,6 @@ spring:
             acks: all
             retries: 3
 
-    data:
-        redis:
-            host: localhost
-            port: 6379
-            database: 0
-            timeout: 2000ms
-
-            lettuce:
-                pool:
-                    max-active: 20
-                    max-idle: 8
-                    min-idle: 2
-                    max-wait: 1000ms
-
 eureka:
     client:
         service-url:
@@ -53,13 +39,9 @@ security:
         expiration-time: 3600
     kafka:
         topic:
-            register: user.registered
-            resend: resend.otp
             deleted: user.deleted
             admin:
                 userState: user.state
-    otp:
-        expiration-minutes: 5
     # must match security.app.quota in url-service.yml, which enforces these limits
     quota:
         free-tier-limit: 50
