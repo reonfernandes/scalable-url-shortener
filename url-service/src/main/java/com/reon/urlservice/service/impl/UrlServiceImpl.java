@@ -8,7 +8,7 @@ import com.reon.urlservice.dto.response.UrlListResponse;
 import com.reon.urlservice.dto.response.UrlResponse;
 import com.reon.urlservice.mapper.UrlMapper;
 import com.reon.urlservice.model.UrlMapping;
-import com.reon.urlservice.respository.UrlRepository;
+import com.reon.urlservice.repository.UrlRepository;
 import com.reon.urlservice.service.UrlCacheService;
 import com.reon.urlservice.client.UserServiceClient;
 import com.reon.urlservice.service.UrlService;
