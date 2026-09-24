@@ -147,8 +147,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAliasAlreadyTakenException(AliasAlreadyTakenException exception) {
         log.warn("Alias exception: {}", exception.getMessage());
         return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ErrorResponse.of(HttpStatus.NOT_FOUND, exception.getMessage()));
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT, exception.getMessage()));
     }
 
     @ExceptionHandler(UnauthorizedUrlAccessException.class)

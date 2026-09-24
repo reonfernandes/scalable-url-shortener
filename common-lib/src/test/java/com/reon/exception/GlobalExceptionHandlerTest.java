@@ -26,6 +26,11 @@ class GlobalExceptionHandlerTest {
         String create(@RequestBody Body body) {
             return "ok";
         }
+
+        @GetMapping("/alias")
+        String alias() {
+            throw new AliasAlreadyTakenException("Custom alias not available.");
+        }
     }
 
     private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
@@ -51,5 +56,11 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(post("/items").contentType(MediaType.APPLICATION_JSON).content("{ not json"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Request body is missing or is not valid JSON"));
+    }
+
+    @Test
+    void aliasTakenReturns409() throws Exception {
+        mockMvc.perform(get("/alias"))
+                .andExpect(status().isConflict());
     }
 }
