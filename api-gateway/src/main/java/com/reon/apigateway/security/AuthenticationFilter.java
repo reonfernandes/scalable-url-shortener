@@ -43,18 +43,11 @@ public class AuthenticationFilter implements GatewayFilter {
 
         String userId = jwtService.getUserId(token);
         String roles = jwtService.getRoles(token);
-        String tier = jwtService.getTier(token);
 
         // Admin route protection
         String path = exchange.getRequest().getPath().value();
         if (path.startsWith("/api/v1/admin") && !roles.contains("ROLE_ADMIN")) {
             log.warn("Gateway :: Access denied to admin route for userId: {}", userId);
-            return forbidden(exchange.getResponse());
-        }
-
-        // url count endpoints are only for url-service, which calls user-service directly
-        if (path.startsWith("/api/v1/user/url/")) {
-            log.warn("Gateway :: Access denied to internal route for userId: {}", userId);
             return forbidden(exchange.getResponse());
         }
 
@@ -65,7 +58,6 @@ public class AuthenticationFilter implements GatewayFilter {
                 .mutate()
                 .header("X-User-Id", userId)
                 .header("X-User-Roles", roles)
-                .header("X-User-Tier", tier)
                 .headers(headers -> headers.remove("Authorization"))
                 .build();
 

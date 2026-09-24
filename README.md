@@ -1,8 +1,10 @@
 # Scalable URL Shortener
 
-A URL shortener built as a set of Spring Boot microservices. Users sign up with email + OTP, log in with JWT,
-create short links (with optional custom alias, expiry date and password), and see click analytics for their links.
-Services talk to each other through REST (OpenFeign) and events (Apache Kafka).
+A URL shortener built as a set of Spring Boot microservices. Users sign up with email and password, log in with
+JWT, create short links (with optional custom alias, expiry date and password), and see click analytics for their
+links. Services talk to each other through events (Apache Kafka).
+
+The main flow is kept simple: **register → login → dashboard → create short URL**.
 
 ---
 
@@ -42,21 +44,15 @@ flowchart LR
     Gateway --> Url[url-service :8101]
     Gateway --> Analytics[analytics-service :8103]
 
-    Url -->|Feign: update URL count| User
-
-    User -- user.registered --> Kafka[(Kafka)]
-    User -- user.deleted / user.state --> Kafka
+    User -- user.deleted / user.state --> Kafka[(Kafka)]
     Url -- url-clicked --> Kafka
-    Kafka --> Notification[notification-service :8104]
     Kafka --> Url
     Kafka --> Analytics
 
     User --- MySQL1[(MySQL user_service)]
-    User --- Redis[(Redis)]
     Url --- MySQL2[(MySQL url_service)]
-    Url --- Redis
+    Url --- Redis[(Redis)]
     Analytics --- Mongo[(MongoDB)]
-    Notification --> SMTP[SMTP / Gmail]
 ```
 
 ---
@@ -68,10 +64,9 @@ flowchart LR
 | **config-server**        | `8600` | Central configuration. Serves the YAML files in `config-server/src/main/resources/configurations/`.       |
 | **discovery-server**     | `8500` | Eureka registry. Every service registers here so others can find it by name (e.g. `lb://url-service`).    |
 | **api-gateway**          | `8080` | Single entry point. Routes requests, validates the JWT and blocks non-admins from admin routes.           |
-| **user-service**         | `8100` | Registration, OTP verification, login, profile, account deletion and admin actions. Uses MySQL and Redis. |
+| **user-service**         | `8100` | Registration, login, logout, profile, account deletion and admin actions. Uses MySQL.                      |
 | **url-service**          | `8101` | Creates, lists, updates and deletes short URLs, and handles redirects. Uses MySQL and a Redis cache.      |
 | **analytics-service**    | `8103` | Saves every click (browser, OS, device, referrer) in MongoDB and returns stats per link.                  |
-| **notification-service** | `8104` | Sends the OTP email when a user registers or asks for a new OTP.                                          |
 | **common-lib**           | –      | Shared code: Kafka event classes, custom exceptions, `ApiResponse` / `ErrorResponse` and the global error handler. |
 
 ---
@@ -85,13 +80,11 @@ flowchart LR
 | API Gateway         | Spring Cloud Gateway (WebFlux)                 |
 | Service Discovery   | Netflix Eureka                                 |
 | Configuration       | Spring Cloud Config (native / classpath)       |
-| Inter-service calls | OpenFeign                                      |
 | Messaging           | Apache Kafka                                   |
 | Databases           | MySQL (users, URLs), MongoDB (analytics)       |
-| Cache               | Redis (OTP codes, redirect cache)              |
+| Cache               | Redis (redirect cache)                         |
 | Security            | Spring Security, JWT (JJWT 0.13), BCrypt       |
 | User-agent parsing  | Yauaa                                          |
-| Email               | Spring Mail (SMTP)                             |
 | Build               | Maven (multi-module)                           |
 
 ---
@@ -106,10 +99,9 @@ scalable-url-shortener/
 │   └── src/main/resources/configurations/   # one YAML file per service
 ├── discovery-server/
 ├── api-gateway/             # RouteConfig (routes), AuthenticationFilter + JwtService (JWT checks)
-├── user-service/            # controller → service → repository, JwtService, OTP cache
-├── url-service/             # UrlController, RedirectController, Redis cache, Kafka consumers, Feign client
-├── analytics-service/       # Kafka consumer + stats endpoint (MongoDB aggregations)
-└── notification-service/    # Kafka consumer that sends OTP emails
+├── user-service/            # controller → service → repository, JwtService, cookies
+├── url-service/             # UrlController, RedirectController, Redis cache, Kafka consumers
+└── analytics-service/       # Kafka consumer + stats endpoint (MongoDB aggregations)
 ```
 
 Every service follows the same layering: **controller** (HTTP) → **service** (business logic) → **repository**
@@ -119,28 +111,33 @@ Every service follows the same layering: **controller** (HTTP) → **service** (
 
 ## Main Flows
 
-### 1. Register and verify email
+### 1. Register
 
-1. `POST /api/v1/user/register`: user-service saves the user as **inactive**, creates a 6-digit OTP, stores a
-   BCrypt hash of it in Redis (key `otp_<email>`, valid **5 minutes**) and publishes a `user.registered` event.
-2. notification-service reads the event and emails the OTP.
-3. `POST /api/v1/user/verify-otp`: if the OTP matches, the user is marked as verified and active.
-4. If the OTP expired, `POST /api/v1/user/resend-otp` creates a new one and sends another email.
+`POST /api/v1/user/register` with name, email and password. The password is stored as a BCrypt hash, and the
+account is **active straight away**, with no email verification.
 
 ### 2. Log in
 
 `POST /api/v1/user/login` checks the password and sets a JWT (valid **1 hour**) in an HttpOnly cookie called
 `accessToken`. The token is not in the response body, so page JavaScript can never read it.
 
-### 3. Create a short URL
+### 3. Dashboard
 
-1. `POST /api/v1/url/new`: the gateway adds `X-User-Id` and `X-User-Tier` from the JWT.
-2. url-service checks the quota: **FREE = 50**, **PREMIUM = 500** active links.
-3. If a custom alias was sent, it must be free. Otherwise the short code is the database id in Base62
+The dashboard needs two calls:
+
+- `GET /api/v1/user/me`: the user's name and email.
+- `GET /api/v1/url/my-urls?page=1&size=10`: the user's short links. `totalElements` is the number of links.
+
+Click stats for a link come from `GET /api/v1/analytics/{shortCode}`.
+
+### 4. Create a short URL
+
+1. `POST /api/v1/url/new`: the gateway adds `X-User-Id` from the JWT.
+2. If a custom alias was sent, it must be free. Otherwise the short code is the database id in Base62
    (6 characters, e.g. id `1` → `aaaaab`).
-4. url-service calls user-service (Feign) to increase the user's URL count.
+3. There is no limit on how many links a user can create.
 
-### 4. Open a short link (redirect)
+### 5. Open a short link (redirect)
 
 1. `GET /{shortCode}`: the gateway forwards it to `/api/v1/redirect/{shortCode}` on url-service.
 2. url-service looks in Redis first (key `url:short:<code>`, cached for **15 minutes**), then MySQL. If Redis is
@@ -149,7 +146,7 @@ Every service follows the same layering: **controller** (HTTP) → **service** (
 4. It increases the click count, publishes a `url-clicked` event and replies with **302** to the long URL.
 5. analytics-service reads the event, parses the user agent and saves the click in MongoDB.
 
-### 5. Admin blocks a user / user deletes their account
+### 6. Admin blocks a user / user deletes their account
 
 - The admin deactivates or activates a user → a `user.state` event → url-service turns all that user's links
   off or on (and clears them from the Redis cache).
@@ -167,11 +164,9 @@ Every service follows the same layering: **controller** (HTTP) → **service** (
   |----------------|---------------|
   | `X-User-Id`    | `a1b2c3...`   |
   | `X-User-Roles` | `ROLE_USER`   |
-  | `X-User-Tier`  | `FREE`        |
 
 - Any `X-User-*` headers sent by the client are removed on every route, so nobody can pretend to be another user.
 - Missing or invalid token → **401** (empty body). Non-admin calling `/api/v1/admin/**` → **403**.
-- `/api/v1/user/url/**` is only for url-service's internal Feign calls; the gateway blocks it with **403**.
 - **Making an admin:** there is no endpoint for this. Add the role in MySQL:
   ```sql
   INSERT INTO user_roles (user_id, role) VALUES ('<user-id>', 'ADMIN');
@@ -231,9 +226,7 @@ All URLs below go through the gateway: `http://localhost:8080`.
 
 | Method   | Endpoint                     | Auth   | Description                          |
 |----------|------------------------------|--------|--------------------------------------|
-| `POST`   | `/api/v1/user/register`      | Public | Create an account and send an OTP    |
-| `POST`   | `/api/v1/user/verify-otp`    | Public | Verify email with the OTP            |
-| `POST`   | `/api/v1/user/resend-otp`    | Public | Send a new OTP                       |
+| `POST`   | `/api/v1/user/register`      | Public | Create an account                    |
 | `POST`   | `/api/v1/user/login`         | Public | Log in and get a JWT                 |
 | `POST`   | `/api/v1/user/logout`        | Public | Log out (clears the JWT cookie)      |
 | `GET`    | `/api/v1/user/me`            | JWT    | Get your profile                     |
@@ -260,44 +253,12 @@ Response `201 Created`:
   "message": "Account created successfully.",
   "data": {
     "userId": "3f6c1a2e-8d4b-4c1e-9a77-2b5e0c9d1f10",
-    "email": "john@example.com",
-    "tier": "FREE"
+    "email": "john@example.com"
   }
 }
 ```
 
 Errors: `409` email already registered, `400` validation failed.
-
-#### Verify OTP: `POST /api/v1/user/verify-otp`
-
-Request:
-```json
-{
-  "email": "john@example.com",
-  "otp": "482913"
-}
-```
-
-Response `200 OK`:
-```json
-{ "status": 200, "message": "Verification successful" }
-```
-
-Errors: `400` OTP is invalid (or not 6 digits), `400` OTP has expired, `409` user already verified, `404` user not found.
-
-#### Resend OTP: `POST /api/v1/user/resend-otp`
-
-Request:
-```json
-{ "email": "john@example.com" }
-```
-
-Response `200 OK`:
-```json
-{ "status": 200, "message": "A new OTP has been sent to your email" }
-```
-
-Errors: `409` user already verified, `404` user not found.
 
 #### Login: `POST /api/v1/user/login`
 
@@ -320,7 +281,7 @@ Response `200 OK`. The JWT is only in the cookie `accessToken=<jwt>; HttpOnly; S
 }
 ```
 
-Errors: `401` invalid credentials, `401` account is disabled (not verified yet, or blocked by an admin).
+Errors: `401` invalid credentials, `401` account is disabled (blocked by an admin).
 
 #### Logout: `POST /api/v1/user/logout`
 
@@ -341,10 +302,7 @@ Response `200 OK`:
   "data": {
     "userId": "3f6c1a2e-8d4b-4c1e-9a77-2b5e0c9d1f10",
     "name": "John Doe",
-    "email": "john@example.com",
-    "tier": "FREE",
-    "urlsCreated": 3,
-    "urlCreationLimit": 50
+    "email": "john@example.com"
   }
 }
 ```
@@ -407,10 +365,7 @@ List users response `200 OK` (`page` starts at 1, `size` is at most 100):
       {
         "userId": "3f6c1a2e-...",
         "name": "John Doe",
-        "email": "john@example.com",
-        "tier": "FREE",
-        "urlsCreated": 3,
-        "urlCreationLimit": 50
+        "email": "john@example.com"
       }
     ],
     "page": 1,
@@ -476,7 +431,7 @@ Response `201 Created`:
 }
 ```
 
-Errors: `403` URL limit reached for your plan, `409` custom alias not available, `400` validation failed.
+Errors: `409` custom alias not available, `400` validation failed.
 
 #### List: `GET /api/v1/url/my-urls?page=1&size=10`
 
@@ -596,11 +551,11 @@ Response `200 OK` (this endpoint returns the stats directly, without the `status
 
 | Status | Meaning in this project                                                       |
 |--------|-------------------------------------------------------------------------------|
-| `400`  | Validation failed, invalid JSON, missing/invalid parameter, invalid/expired OTP, link inactive/expired/password errors |
+| `400`  | Validation failed, invalid JSON, missing/invalid parameter, link inactive/expired/password errors |
 | `401`  | No/invalid JWT, wrong email or password, account disabled                     |
-| `403`  | Not an admin, not your URL or account, URL quota reached, internal route      |
+| `403`  | Not an admin, not your URL or account                                         |
 | `404`  | User or URL not found, unknown endpoint                                       |
-| `409`  | Email already registered, user already verified, custom alias taken           |
+| `409`  | Email already registered, custom alias taken                                  |
 | `500`  | Unexpected server error                                                       |
 | `503`  | The service behind the gateway is not running                                 |
 
@@ -613,7 +568,6 @@ package, and a message that can't be read is logged and skipped instead of block
 
 | Topic             | Producer     | Consumer             | Payload                                                          | Purpose                           |
 |-------------------|--------------|----------------------|------------------------------------------------------------------|-----------------------------------|
-| `user.registered` | user-service | notification-service | `userId, name, email, otp`                                       | Send the OTP email                |
 | `user.deleted`    | user-service | url-service          | `userId`                                                         | Delete the user's links           |
 | `user.state`      | user-service | url-service          | `userId, state`                                                  | Turn the user's links on/off      |
 | `url-clicked`     | url-service  | analytics-service    | `shortCode, urlId, userId, ipAddress, userAgent, referrer, clickedAt` | Save the click for analytics |
@@ -630,14 +584,29 @@ package, and a message that can't be read is logged and skipped instead of block
   CREATE DATABASE user_service;
   CREATE DATABASE url_service;
   ```
-- Redis on `6379`
+- Redis on `6379` (used by url-service as a redirect cache)
 - Kafka on `9092`
 - MongoDB on `27017`
+
+**Already have a `user_service` database from an older version?** Hibernate adds new columns but never removes
+old ones, and the old columns below would make new sign-ups fail. Run this once in MySQL (the `UPDATE` lets
+users who never verified their email log in):
+
+```sql
+USE user_service;
+UPDATE users SET is_active = true WHERE is_email_verified = false;
+ALTER TABLE users
+    DROP COLUMN is_email_verified,
+    DROP COLUMN tier,
+    DROP COLUMN auth_provider,
+    DROP COLUMN provider_id,
+    DROP COLUMN url_count;
+```
 
 ### 2. Set your own configuration
 
 Edit the files in `config-server/src/main/resources/configurations/` and put in your own values:
-the MySQL username/password, the SMTP (email) account and password, and the JWT secret. The JWT secret must be
+the MySQL username/password and the JWT secret. The JWT secret must be
 the **same** in `user-service.yml` and `api-gateway.yml` (a Base64 key of at least 256 bits, e.g. from
 `openssl rand -base64 32`).
 
@@ -657,7 +626,6 @@ cd discovery-server     && mvn spring-boot:run   # 2. then Eureka
 cd user-service         && mvn spring-boot:run   # 3. then the services (any order)
 cd url-service          && mvn spring-boot:run
 cd analytics-service    && mvn spring-boot:run
-cd notification-service && mvn spring-boot:run
 cd api-gateway          && mvn spring-boot:run   # 4. gateway last
 ```
 
@@ -666,14 +634,10 @@ Run each one in its own terminal. Eureka's dashboard at `http://localhost:8500` 
 ### 5. Try it
 
 ```bash
-# register, then check your email for the OTP
+# register
 curl -X POST http://localhost:8080/api/v1/user/register \
   -H "Content-Type: application/json" \
   -d '{"name":"John Doe","email":"john@example.com","password":"Secret@123"}'
-
-curl -X POST http://localhost:8080/api/v1/user/verify-otp \
-  -H "Content-Type: application/json" \
-  -d '{"email":"john@example.com","otp":"123456"}'
 
 # log in and save the cookie
 curl -c cookies.txt -X POST http://localhost:8080/api/v1/user/login \
@@ -701,12 +665,8 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 | File                  | Key                                    | Default                 | Meaning                           |
 |-----------------------|----------------------------------------|-------------------------|-----------------------------------|
 | `user-service.yml`    | `security.jwt.expiration-time`         | `3600`                  | JWT lifetime (seconds)            |
-| `user-service.yml`    | `security.otp.expiration-minutes`      | `5`                     | OTP lifetime (minutes)            |
 | `user-service.yml`    | `security.cookie.name`                 | `accessToken`           | Name of the JWT cookie            |
-| `user-service.yml`    | `security.quota.free-tier-limit` / `premium-tier-limit` | `50` / `500` | Limits shown in the profile (keep equal to url-service) |
 | `url-service.yml`     | `security.app.url.base-url`            | `http://localhost:8080` | Prefix used to build `shortUrl`   |
-| `url-service.yml`     | `security.app.quota.free-tier-limit`   | `50`                    | Max active links, FREE tier       |
-| `url-service.yml`     | `security.app.quota.premium-tier-limit`| `500`                   | Max active links, PREMIUM tier    |
 | `url-service.yml`     | `security.app.cache.url-ttl-minutes`   | `15`                    | How long a link stays in Redis    |
 
 ---
@@ -715,7 +675,6 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 
 Planned, not built yet:
 
-- Circuit breaker (Resilience4j) for the Feign call to user-service
 - Rate limiting at the gateway
 - Dashboard endpoint with stats for all of a user's links
 - Country/city lookup for clicks (GeoIP)

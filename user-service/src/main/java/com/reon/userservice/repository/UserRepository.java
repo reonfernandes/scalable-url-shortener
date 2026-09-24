@@ -1,8 +1,6 @@
 package com.reon.userservice.repository;
 
 import com.reon.userservice.model.User;
-import com.reon.userservice.model.type.AuthProvider;
-import com.reon.userservice.model.type.Tier;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,19 +13,6 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
-    Optional<User> findByProviderIdAndAuthProvider(String providerId, AuthProvider authProvider);
-
-    @Modifying
-    @Query("UPDATE User u SET u.tier = :tier WHERE u.userId = :userId")
-    void updateTier(@Param("userId") String userId, @Param("tier") Tier tier);
-
-    @Modifying
-    @Query("UPDATE User u SET u.urlCount = u.urlCount + 1 WHERE u.userId = :userId")
-    void incrementUrlCount(@Param("userId") String userId);
-
-    @Modifying
-    @Query("UPDATE User u SET u.urlCount = GREATEST(u.urlCount - 1, 0) WHERE u.userId = :userId")
-    void decrementUserUrlCount(@Param("userId") String userId);
 
     // admin specific
     @Modifying
@@ -37,8 +22,4 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Modifying
     @Query("UPDATE User u SET u.active = true WHERE u.userId = :userId")
     void activateUser(@Param("userId") String userId);
-
-    @Modifying
-    @Query("UPDATE User u SET u.emailVerified = true WHERE u.userId = :userId")
-    void verifyEmail(@Param("userId") String userId);
 }

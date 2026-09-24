@@ -62,8 +62,5 @@ security:
     app:
         url:
             base-url: http://localhost:8080
-        quota:
-            free-tier-limit: 50
-            premium-tier-limit: 500
         cache:
             url-ttl-minutes: 15

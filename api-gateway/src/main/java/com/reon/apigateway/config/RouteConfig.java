@@ -18,7 +18,7 @@ public class RouteConfig {
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
                 .route("user-service-public", route -> route
-                        .path("/api/v1/user/register", "/api/v1/user/login", "/api/v1/user/verify-otp", "/api/v1/user/resend-otp", "/api/v1/user/logout")
+                        .path("/api/v1/user/register", "/api/v1/user/login", "/api/v1/user/logout")
                         .uri("lb://user-service"))
                 .route("user-service-admin", route -> route
                         .path("/api/v1/admin/**")

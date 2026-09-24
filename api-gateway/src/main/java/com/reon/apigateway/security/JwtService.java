@@ -70,8 +70,4 @@ public class JwtService {
     public String getRoles(String token) {
         return getClaims(token).get("roles", String.class);
     }
-
-    public String getTier(String token) {
-        return getClaims(token).get("tier", String.class);
-    }
 }
