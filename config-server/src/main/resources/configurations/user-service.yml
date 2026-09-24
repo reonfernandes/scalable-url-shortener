@@ -42,7 +42,3 @@ security:
             deleted: user.deleted
             admin:
                 userState: user.state
-    # must match security.app.quota in url-service.yml, which enforces these limits
-    quota:
-        free-tier-limit: 50
-        premium-tier-limit: 500

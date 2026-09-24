@@ -1,7 +1,6 @@
 package com.reon.userservice.model;
 
 import com.reon.userservice.model.type.Role;
-import com.reon.userservice.model.type.Tier;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -36,11 +35,6 @@ public class User implements UserDetails {
 
     @Column(name = "password", nullable = false)
     private String password;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tier", nullable = false)
-    @Builder.Default
-    private Tier tier = Tier.FREE;
 
     @Enumerated(EnumType.STRING)
     @ElementCollection(fetch = FetchType.EAGER)

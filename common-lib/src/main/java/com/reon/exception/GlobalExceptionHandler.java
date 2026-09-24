@@ -118,14 +118,6 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.UNAUTHORIZED, exception.getMessage()));
     }
 
-    @ExceptionHandler(UrlQuotaExceededException.class)
-    public ResponseEntity<ErrorResponse> handleQuotaExceeded(UrlQuotaExceededException exception) {
-        log.warn("Quota exceeded: {}", exception.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.FORBIDDEN)
-                .body(ErrorResponse.of(HttpStatus.FORBIDDEN, exception.getMessage()));
-    }
-
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(BadCredentialsException exception) {
         log.warn("Bad Credentials Exception: {}", exception.getMessage());

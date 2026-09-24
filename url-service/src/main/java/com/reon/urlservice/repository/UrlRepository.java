@@ -19,8 +19,6 @@ public interface UrlRepository extends JpaRepository<UrlMapping, Long> {
 
     Page<UrlMapping> findByUserId(String userId, Pageable pageable);
 
-    long countByUserIdAndActiveTrue(String userId);
-
     @Modifying
     @Query("UPDATE UrlMapping u SET u.clickCount = u.clickCount + 1 WHERE u.shortCode = :shortCode")
     void incrementClickCount(@Param("shortCode") String shortCode);

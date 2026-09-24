@@ -43,7 +43,6 @@ public class AuthenticationFilter implements GatewayFilter {
 
         String userId = jwtService.getUserId(token);
         String roles = jwtService.getRoles(token);
-        String tier = jwtService.getTier(token);
 
         // Admin route protection
         String path = exchange.getRequest().getPath().value();
@@ -65,7 +64,6 @@ public class AuthenticationFilter implements GatewayFilter {
                 .mutate()
                 .header("X-User-Id", userId)
                 .header("X-User-Roles", roles)
-                .header("X-User-Tier", tier)
                 .headers(headers -> headers.remove("Authorization"))
                 .build();
 

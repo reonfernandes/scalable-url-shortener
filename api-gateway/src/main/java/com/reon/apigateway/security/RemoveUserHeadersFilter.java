@@ -16,7 +16,7 @@ import java.util.List;
  */
 @Component
 public class RemoveUserHeadersFilter implements GlobalFilter, Ordered {
-    public static final List<String> USER_HEADERS = List.of("X-User-Id", "X-User-Roles", "X-User-Tier");
+    public static final List<String> USER_HEADERS = List.of("X-User-Id", "X-User-Roles");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {

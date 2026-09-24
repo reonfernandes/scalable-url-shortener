@@ -1,7 +1,6 @@
 package com.reon.userservice.jwt;
 
 import com.reon.userservice.model.User;
-import com.reon.userservice.model.type.Tier;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -39,7 +38,6 @@ public class JwtService {
         String roles = user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
-        Tier tier = user.getTier();
 
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationTime * 1000);
@@ -48,7 +46,6 @@ public class JwtService {
         claims.put("userId", userId);
         claims.put("email", email);
         claims.put("roles", roles);
-        claims.put("tier", tier);
 
         return Jwts.builder()
                 .id(jti)
