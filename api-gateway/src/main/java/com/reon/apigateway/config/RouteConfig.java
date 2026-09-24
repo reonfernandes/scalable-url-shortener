@@ -39,6 +39,11 @@ public class RouteConfig {
                         .path("/api/v1/analytics/**")
                         .filters(authFilter -> authFilter.filter(authenticationFilter))
                         .uri("lb://analytics-service"))
+                // short links like /abc123 → /api/v1/redirect/abc123 (keep this route last)
+                .route("short-link", route -> route
+                        .path("/{shortCode}")
+                        .filters(filter -> filter.rewritePath("/(?<shortCode>.*)", "/api/v1/redirect/${shortCode}"))
+                        .uri("lb://url-service"))
                 .build();
     }
 }
