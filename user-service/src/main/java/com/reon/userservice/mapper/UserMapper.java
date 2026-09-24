@@ -28,7 +28,6 @@ public class UserMapper {
                 .userId(user.getUserId())
                 .name(user.getName())
                 .email(user.getEmail())
-                .urlsCreated(user.getUrlCount())
                 .build();
     }
 }

@@ -6,7 +6,6 @@ import lombok.Builder;
 public record UserProfile(
         String userId,
         String name,
-        String email,
-        int urlsCreated
+        String email
 ) {
 }

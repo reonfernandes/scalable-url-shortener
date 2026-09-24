@@ -206,29 +206,6 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    @Override
-    @Transactional
-    public void incrementUrlCountForUser(String userId) {
-        log.info("User Service :: Feign call: Incrementing Url count for user: {}", userId);
-        User user = findIfUserIsActive(userId);
-        if (user != null){
-            userRepository.incrementUrlCount(user.getUserId());
-        }
-        log.info("User Service :: Url count incremented");
-    }
-
-    @Override
-    @Transactional
-    public void decrementUrlCountForUser(String userId) {
-        log.info("User Service :: Feign call: Decrementing Url count for user: {}", userId);
-
-        User user = findIfUserIsActive(userId);
-        if (user != null){
-            userRepository.decrementUserUrlCount(user.getUserId());
-        }
-        log.info("User Service :: Url count decremented");
-    }
-
     // admin specific methods
     @Override
     @Transactional

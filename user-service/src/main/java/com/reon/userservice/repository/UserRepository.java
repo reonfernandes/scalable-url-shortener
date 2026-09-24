@@ -14,14 +14,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
 
-    @Modifying
-    @Query("UPDATE User u SET u.urlCount = u.urlCount + 1 WHERE u.userId = :userId")
-    void incrementUrlCount(@Param("userId") String userId);
-
-    @Modifying
-    @Query("UPDATE User u SET u.urlCount = GREATEST(u.urlCount - 1, 0) WHERE u.userId = :userId")
-    void decrementUserUrlCount(@Param("userId") String userId);
-
     // admin specific
     @Modifying
     @Query("UPDATE User u SET u.active = false WHERE u.userId = :userId")

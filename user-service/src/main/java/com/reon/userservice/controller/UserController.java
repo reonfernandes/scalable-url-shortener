@@ -119,32 +119,4 @@ public class UserController {
                         "Account deleted successfully"
                 ));
     }
-
-    @PostMapping("/url/increase-count")
-    public ResponseEntity<ApiResponse<Void>> increaseUrlCount(@RequestParam("userId") String userId) {
-        log.info("User Controller :: Incoming request for incrementing url count for user: {}", userId);
-        userService.incrementUrlCountForUser(userId);
-        log.info("User Controller :: Outgoing request: Url count incremented");
-
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(ApiResponse.of(
-                        HttpStatus.OK,
-                        "Url count increased"
-                ));
-    }
-
-    @PostMapping("/url/decrease-count")
-    public ResponseEntity<ApiResponse<Void>> decreaseUrlCount(@RequestParam("userId") String userId) {
-        log.info("User Controller :: Incoming request for decrementing url count");
-        userService.decrementUrlCountForUser(userId);
-        log.info("User Controller :: Outgoing request: Url count decremented");
-
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(ApiResponse.of(
-                        HttpStatus.OK,
-                        "Url count decreased"
-                ));
-    }
 }

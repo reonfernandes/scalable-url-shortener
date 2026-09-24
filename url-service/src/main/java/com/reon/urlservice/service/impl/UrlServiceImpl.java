@@ -10,7 +10,6 @@ import com.reon.urlservice.mapper.UrlMapper;
 import com.reon.urlservice.model.UrlMapping;
 import com.reon.urlservice.repository.UrlRepository;
 import com.reon.urlservice.service.UrlCacheService;
-import com.reon.urlservice.client.UserServiceClient;
 import com.reon.urlservice.service.UrlService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -31,17 +30,15 @@ public class UrlServiceImpl implements UrlService {
     private final UrlRepository urlRepository;
     private final UrlMapper urlMapper;
     private final PasswordEncoder encoder;
-    private final UserServiceClient userServiceClient;
     private final UrlCacheService urlCacheService;
     private final HttpServletRequest httpRequest;
 
     public UrlServiceImpl(
             UrlRepository urlRepository, UrlMapper urlMapper, PasswordEncoder encoder,
-            UserServiceClient userServiceClient, UrlCacheService urlCacheService, HttpServletRequest httpRequest) {
+            UrlCacheService urlCacheService, HttpServletRequest httpRequest) {
         this.urlRepository = urlRepository;
         this.urlMapper = urlMapper;
         this.encoder = encoder;
-        this.userServiceClient = userServiceClient;
         this.urlCacheService = urlCacheService;
         this.httpRequest = httpRequest;
     }
@@ -63,9 +60,6 @@ public class UrlServiceImpl implements UrlService {
 
         UrlMapping saveUrl = buildAndSaveUrl(urlRequest, userId);
 
-        // feign call to user service to update the url count field.
-        userServiceClient.increaseUrlCount(userId);
-
         log.info("URL Service :: Short URL created — shortCode: {}, userId: {}", saveUrl.getShortCode(), userId);
         return urlMapper.urlResponseToUser(saveUrl);
     }
@@ -83,7 +77,6 @@ public class UrlServiceImpl implements UrlService {
         if (userId.equals(url.getUserId())) {
             urlCacheService.evict(url.getShortCode());
             urlRepository.delete(url);
-            userServiceClient.decreaseUrlCount(url.getUserId());
         } else {
             throw new UnauthorizedUrlAccessException();
         }

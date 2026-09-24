@@ -51,12 +51,6 @@ public class AuthenticationFilter implements GatewayFilter {
             return forbidden(exchange.getResponse());
         }
 
-        // url count endpoints are only for url-service, which calls user-service directly
-        if (path.startsWith("/api/v1/user/url/")) {
-            log.warn("Gateway :: Access denied to internal route for userId: {}", userId);
-            return forbidden(exchange.getResponse());
-        }
-
         log.info("Gateway :: Authenticated userId: {}, roles: {}", userId, roles);
 
 
