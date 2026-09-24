@@ -234,6 +234,7 @@ All URLs below go through the gateway: `http://localhost:8080`.
 | `POST`   | `/api/v1/user/verify-otp`    | Public | Verify email with the OTP            |
 | `POST`   | `/api/v1/user/resend-otp`    | Public | Send a new OTP                       |
 | `POST`   | `/api/v1/user/login`         | Public | Log in and get a JWT                 |
+| `POST`   | `/api/v1/user/logout`        | Public | Log out (clears the JWT cookie)      |
 | `GET`    | `/api/v1/user/me`            | JWT    | Get your profile                     |
 | `PATCH`  | `/api/v1/user/me/update`     | JWT    | Change name and/or password          |
 | `DELETE` | `/api/v1/user/me/delete`     | JWT    | Delete your account                  |
@@ -308,6 +309,15 @@ Response `200 OK` (also sets the cookie `accessToken=<jwt>; HttpOnly; Secure; Sa
 
 Errors: `401` invalid credentials, `401` account is disabled (not verified yet, or blocked by an admin).
 
+#### Logout: `POST /api/v1/user/logout`
+
+Clears the `accessToken` cookie. Works even if the token has already expired.
+
+Response `200 OK`:
+```json
+{ "status": 200, "message": "Logged out successfully" }
+```
+
 #### Get profile: `GET /api/v1/user/me`
 
 Response `200 OK`:
@@ -348,7 +358,14 @@ Errors: `401` current password is incorrect, `400` validation failed.
 
 #### Delete account: `DELETE /api/v1/user/me/delete?userId=<your-user-id>`
 
-`userId` must be your own id. Response: `204 No Content`. All your short links are deleted as well.
+`userId` must be your own id. All your short links are deleted as well.
+
+Response `200 OK`:
+```json
+{ "status": 200, "message": "Account deleted successfully" }
+```
+
+Errors: `403` you can only delete your own account.
 
 ---
 
@@ -447,7 +464,7 @@ Response `201 Created`:
 }
 ```
 
-Errors: `403` URL limit reached for your plan, `404` custom alias not available, `400` validation failed.
+Errors: `403` URL limit reached for your plan, `409` custom alias not available, `400` validation failed.
 
 #### List: `GET /api/v1/url/my-urls?page=1&size=10`
 
@@ -478,12 +495,11 @@ Response `200 OK` (`data` is a Spring `Page`; its first item holds your URLs):
 
 #### Update: `PATCH /api/v1/url/update-url?urlId=1`
 
-Same fields as create. `longUrl` is required; the other fields are only changed when sent.
+Same fields as create. All fields are optional; only the fields you send are changed.
 
 Request:
 ```json
 {
-  "longUrl": "https://www.example.com/new/path",
   "title": "Updated title"
 }
 ```
@@ -493,11 +509,16 @@ Response `200 OK`:
 { "status": 200, "message": "URL Updated successfully." }
 ```
 
-Errors: `403` not your URL, `404` URL not found, `404` custom alias not available.
+Errors: `403` not your URL, `404` URL not found, `409` custom alias not available.
 
 #### Delete: `DELETE /api/v1/url/delete-url?urlId=1`
 
-Response: `204 No Content`. Errors: `403` not your URL, `404` URL not found.
+Response `200 OK`:
+```json
+{ "status": 200, "message": "URL deleted successfully" }
+```
+
+Errors: `403` not your URL, `404` URL not found.
 
 ---
 
@@ -516,7 +537,7 @@ Response: `302 Found` with header `Location: <long URL>`.
 |--------|--------------------------------|-----------------------------------|
 | `404`  | `URL not found`                | Short code does not exist         |
 | `400`  | `This url is no longer active.`| Link or its owner was deactivated |
-| `400`  | `URL as expired`               | `expiresAt` has passed            |
+| `400`  | `URL has expired`              | `expiresAt` has passed            |
 | `400`  | `URL is password protected`    | Password not sent                 |
 | `400`  | `Incorrect password`           | Wrong password                    |
 
@@ -549,12 +570,13 @@ Response `200 OK` (this endpoint returns the stats directly, without the `status
 
 | Status | Meaning in this project                                                       |
 |--------|-------------------------------------------------------------------------------|
-| `400`  | Validation failed, invalid/expired OTP, link inactive/expired/password errors |
+| `400`  | Validation failed, invalid JSON, missing/invalid parameter, invalid/expired OTP, link inactive/expired/password errors |
 | `401`  | No/invalid JWT, wrong email or password, account disabled                     |
-| `403`  | Not an admin, not your URL, URL quota reached, internal route                 |
-| `404`  | User or URL not found, custom alias not available                             |
-| `409`  | Email already registered, user already verified                               |
+| `403`  | Not an admin, not your URL or account, URL quota reached, internal route      |
+| `404`  | User or URL not found, unknown endpoint                                       |
+| `409`  | Email already registered, user already verified, custom alias taken           |
 | `500`  | Unexpected server error                                                       |
+| `503`  | The service behind the gateway is not running                                 |
 
 ---
 
@@ -652,6 +674,7 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 | `user-service.yml`    | `security.jwt.expiration-time`         | `3600`                  | JWT lifetime (seconds)            |
 | `user-service.yml`    | `security.otp.expiration-minutes`      | `5`                     | OTP lifetime (minutes)            |
 | `user-service.yml`    | `security.cookie.name`                 | `accessToken`           | Name of the JWT cookie            |
+| `user-service.yml`    | `security.quota.free-tier-limit` / `premium-tier-limit` | `50` / `500` | Limits shown in the profile (keep equal to url-service) |
 | `url-service.yml`     | `security.app.url.base-url`            | `http://localhost:8080` | Prefix used to build `shortUrl`   |
 | `url-service.yml`     | `security.app.quota.free-tier-limit`   | `50`                    | Max active links, FREE tier       |
 | `url-service.yml`     | `security.app.quota.premium-tier-limit`| `500`                   | Max active links, PREMIUM tier    |
@@ -663,7 +686,6 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 
 Planned, not built yet:
 
-- Logout endpoint (clear the JWT cookie)
 - Circuit breaker (Resilience4j) for the Feign call to user-service
 - Rate limiting at the gateway
 - Dashboard endpoint with stats for all of a user's links

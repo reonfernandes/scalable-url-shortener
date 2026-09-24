@@ -14,7 +14,7 @@ public class Base62Encoder {
 
     public static String encode(Long id){
         if (id <= 0) {
-            throw new IllegalArgumentException("Id must be a positive number, provide Id: {}" +  id);
+            throw new IllegalArgumentException("Id must be a positive number, provided Id: " + id);
         }
 
         log.info("Base62 Encoder :: Generating a new short code");

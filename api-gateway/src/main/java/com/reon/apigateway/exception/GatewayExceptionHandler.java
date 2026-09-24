@@ -8,6 +8,7 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -21,10 +22,23 @@ public class GatewayExceptionHandler implements ErrorWebExceptionHandler {
     
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
-        log.error("Gateway :: Unhandled exception: {}", ex.getMessage());
-
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         String message = "An unexpected error occurred";
+
+        // errors like "no route found" (404) or "service not available" (503) carry their own status
+        if (ex instanceof ResponseStatusException statusException) {
+            HttpStatus resolved = HttpStatus.resolve(statusException.getStatusCode().value());
+            if (resolved != null) {
+                status = resolved;
+                message = status.getReasonPhrase();
+            }
+        }
+
+        if (status.is5xxServerError()) {
+            log.error("Gateway :: Unhandled exception: {}", ex.getMessage(), ex);
+        } else {
+            log.warn("Gateway :: Request failed with {}: {}", status.value(), ex.getMessage());
+        }
 
         exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);

@@ -7,12 +7,15 @@ import com.reon.userservice.dto.UpdateProfileRequest;
 import com.reon.userservice.dto.response.LoginResponse;
 import com.reon.userservice.dto.response.RegistrationResponse;
 import com.reon.userservice.dto.response.UserProfile;
+import com.reon.userservice.service.CookieService;
 import com.reon.userservice.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,9 +24,11 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     private final UserService userService;
+    private final CookieService cookieService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, CookieService cookieService) {
         this.userService = userService;
+        this.cookieService = cookieService;
     }
 
     @PostMapping("/register")
@@ -83,6 +88,21 @@ public class UserController {
                 ));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout() {
+        log.info("User Controller :: Incoming request for logout");
+        ResponseCookie clearedCookie = cookieService.clearAccessTokenCookie();
+        log.info("User Controller :: Outgoing request: Logged out");
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, clearedCookie.toString())
+                .body(ApiResponse.of(
+                        HttpStatus.OK,
+                        "Logged out successfully"
+                ));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserProfile>> profile(){
         log.info("User Controller :: Incoming request for fetching profile");
@@ -120,9 +140,9 @@ public class UserController {
         log.warn("User Controller :: Outgoing request: Account deleted.");
 
         return ResponseEntity
-                .status(HttpStatus.NO_CONTENT)
+                .status(HttpStatus.OK)
                 .body(ApiResponse.of(
-                        HttpStatus.NO_CONTENT,
+                        HttpStatus.OK,
                         "Account deleted successfully"
                 ));
     }

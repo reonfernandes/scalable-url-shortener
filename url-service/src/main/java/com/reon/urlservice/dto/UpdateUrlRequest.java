@@ -1,7 +1,6 @@
 package com.reon.urlservice.dto;
 
 import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
@@ -14,7 +13,7 @@ public record UpdateUrlRequest(
         @Size(max = 50, message = "Title cannot exceed 50 characters")
         String title,
 
-        @NotBlank(message = "Long URL must not be blank")
+        // optional: only changed when sent
         @URL(message = "Must be a valid URL")
         @Size(max = 2048, message = "URL must not exceed 2048 characters")
         String longUrl,

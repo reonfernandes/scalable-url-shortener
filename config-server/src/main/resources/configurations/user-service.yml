@@ -60,3 +60,7 @@ security:
                 userState: user.state
     otp:
         expiration-minutes: 5
+    # must match security.app.quota in url-service.yml, which enforces these limits
+    quota:
+        free-tier-limit: 50
+        premium-tier-limit: 500

@@ -58,6 +58,7 @@ public class User implements UserDetails {
             joinColumns = @JoinColumn(name = "user_id")
     )
     @Column(name = "role", nullable = false)
+    @Builder.Default
     private Set<Role> role = new HashSet<>();
 
     @Column(name = "is_active", nullable = false)

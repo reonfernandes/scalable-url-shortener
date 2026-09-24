@@ -7,10 +7,20 @@ import com.reon.userservice.dto.response.UserProfile;
 import com.reon.userservice.model.User;
 import com.reon.userservice.model.type.Tier;
 import com.reon.userservice.utils.OTPGenerator;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class UserMapper {
+    private final int freeTierLimit;
+    private final int premiumTierLimit;
+
+    public UserMapper(@Value("${security.quota.free-tier-limit}") int freeTierLimit,
+                      @Value("${security.quota.premium-tier-limit}") int premiumTierLimit) {
+        this.freeTierLimit = freeTierLimit;
+        this.premiumTierLimit = premiumTierLimit;
+    }
+
     public User mapToEntity(RegistrationRequest registrationRequest) {
         return User.builder()
                 .name(registrationRequest.name())
@@ -49,8 +59,8 @@ public class UserMapper {
 
     private Integer getUrlCreationLimit(Tier tier) {
         return switch (tier) {
-            case FREE -> 50;
-            case PREMIUM -> null;
+            case FREE -> freeTierLimit;
+            case PREMIUM -> premiumTierLimit;
         };
     }
 }

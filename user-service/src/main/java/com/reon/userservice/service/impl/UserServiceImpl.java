@@ -273,8 +273,9 @@ public class UserServiceImpl implements UserService {
     public void deleteAccount(String userId) {
         log.warn("User Service :: Deleting user profile: Id: {}", userId);
 
+        // userId comes from the request param, so it is never null; the header can be missing
         String headerUserId = httpRequest.getHeader("X-User-Id");
-        if (headerUserId.equals(userId)) {
+        if (userId.equals(headerUserId)) {
             User user = findIfUserIsActive(userId);
             if (user != null) {
                 userRepository.delete(user);
@@ -286,7 +287,7 @@ public class UserServiceImpl implements UserService {
             }
             log.warn("User Service :: Profile deleted");
         } else {
-            throw new IllegalArgumentException("You cannot perform this operation.");
+            throw new ForbiddenOperationException("You can only delete your own account.");
         }
     }
 

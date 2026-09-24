@@ -30,4 +30,17 @@ public class CookieServiceImpl implements CookieService {
         log.info("Cookie Service :: Cookie for access token generated");
         return strict;
     }
+
+    // same cookie with maxAge 0 tells the browser to delete it
+    @Override
+    public ResponseCookie clearAccessTokenCookie() {
+        log.info("Cookie Service :: Clearing access token cookie");
+        return ResponseCookie.from(cookieName, "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+    }
 }

@@ -80,9 +80,9 @@ public class UrlController {
         log.info("Url Controller :: Outgoing request: Url deleted");
 
         return ResponseEntity
-                .status(HttpStatus.NO_CONTENT)
+                .status(HttpStatus.OK)
                 .body(ApiResponse.of(
-                        HttpStatus.NO_CONTENT,
+                        HttpStatus.OK,
                         "URL deleted successfully"
                 ));
     }
