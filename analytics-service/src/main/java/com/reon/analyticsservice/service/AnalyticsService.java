@@ -16,24 +16,25 @@ public class AnalyticsService {
         this.analyticsRepository = analyticsRepository;
     }
 
-    public UrlStatsResponse getStatsForUrl(String shortCode) {
-        long totalClicks = analyticsRepository.countByShortCode(shortCode);
+    // only counts clicks on links owned by this user, so nobody can read other users' stats
+    public UrlStatsResponse getStatsForUrl(String shortCode, String userId) {
+        long totalClicks = analyticsRepository.countByShortCodeAndUserId(shortCode, userId);
         
-        Map<String, Long> clicksByBrowser = analyticsRepository.getBrowserStats(shortCode)
+        Map<String, Long> clicksByBrowser = analyticsRepository.getBrowserStats(shortCode, userId)
                 .stream().collect(Collectors.toMap(
                         entry -> entry.getKey() != null ? entry.getKey() : "Unknown",
                         StatEntry::getValue,
                         Long::sum
                 ));
 
-        Map<String, Long> clicksByOs = analyticsRepository.getOsStats(shortCode)
+        Map<String, Long> clicksByOs = analyticsRepository.getOsStats(shortCode, userId)
                 .stream().collect(Collectors.toMap(
                         entry -> entry.getKey() != null ? entry.getKey() : "Unknown",
                         StatEntry::getValue,
                         Long::sum
                 ));
 
-        Map<String, Long> clicksByCountry = analyticsRepository.getCountryStats(shortCode)
+        Map<String, Long> clicksByCountry = analyticsRepository.getCountryStats(shortCode, userId)
                 .stream().collect(Collectors.toMap(
                         entry -> entry.getKey() != null ? entry.getKey() : "Unknown",
                         StatEntry::getValue,
