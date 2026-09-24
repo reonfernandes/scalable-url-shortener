@@ -120,9 +120,9 @@ public class UserController {
         log.warn("User Controller :: Outgoing request: Account deleted.");
 
         return ResponseEntity
-                .status(HttpStatus.NO_CONTENT)
+                .status(HttpStatus.OK)
                 .body(ApiResponse.of(
-                        HttpStatus.NO_CONTENT,
+                        HttpStatus.OK,
                         "Account deleted successfully"
                 ));
     }
