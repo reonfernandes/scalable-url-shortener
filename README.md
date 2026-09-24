@@ -168,6 +168,7 @@ the response body and as an HttpOnly cookie called `accessToken`.
   | `X-User-Roles` | `ROLE_USER`   |
   | `X-User-Tier`  | `FREE`        |
 
+- Any `X-User-*` headers sent by the client are removed on every route, so nobody can pretend to be another user.
 - Missing or invalid token → **401** (empty body). Non-admin calling `/api/v1/admin/**` → **403**.
 - `/api/v1/user/url/**` is only for url-service's internal Feign calls; the gateway blocks it with **403**.
 - **Making an admin:** there is no endpoint for this. Add the role in MySQL:
