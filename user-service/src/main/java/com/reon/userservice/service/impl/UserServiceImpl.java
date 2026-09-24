@@ -75,7 +75,7 @@ public class UserServiceImpl implements UserService {
 
     public UserServiceImpl(
             @Value("${security.jwt.expiration-time}") Long expirationTime,
-            @Value("${security.cache.url-ttl-minutes}") Long duration,
+            @Value("${security.otp.expiration-minutes}") Long duration,
             @Value("${security.kafka.topic.register}") String registerSuccessTopic,
             @Value("${security.kafka.topic.deleted}") String userAccountDeleteTopic,
             @Value("${security.kafka.topic.admin.userState}") String adminStateTopic,
@@ -164,6 +164,27 @@ public class UserServiceImpl implements UserService {
         otpCache.deleteOtp(email);
 
         log.info("User Service : Email verified successfully for userId: {}", user.getUserId());
+    }
+
+    @Override
+    public void resendOtp(String email) {
+        log.info("User Service :: Resending Otp for user: {}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (user.isEmailVerified()) {
+            log.info("User already verified: {}", email);
+            throw new UserAlreadyVerifiedException("User is already verified");
+        }
+
+        // new otp replaces the old one in redis
+        String otp = OTPGenerator.generateOTP();
+        otpCache.storeOtp(otp, user.getEmail(), duration);
+
+        // same event as registration, so the notification service sends the otp mail again
+        publishRegistrationEvent(user, otp);
+        log.info("User Service :: Otp resent for user: {}", email);
     }
 
     @Override
