@@ -1,15 +1,14 @@
 package com.reon.urlservice.controller;
 
 import com.reon.exception.response.ApiResponse;
+import com.reon.exception.response.PageResponse;
 import com.reon.urlservice.dto.UpdateUrlRequest;
 import com.reon.urlservice.dto.UrlRequest;
-import com.reon.urlservice.dto.response.UrlListResponse;
 import com.reon.urlservice.dto.response.UrlResponse;
 import com.reon.urlservice.service.UrlService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,12 +39,12 @@ public class UrlController {
     }
 
     @GetMapping("/my-urls")
-    public ResponseEntity<ApiResponse<Page<UrlListResponse>>> fetchAllUrls(
+    public ResponseEntity<ApiResponse<PageResponse<UrlResponse>>> fetchAllUrls(
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
         log.info("Url Controller :: Incoming request for fetching urls from page: {} of size: {}", page, size);
-        Page<UrlListResponse> urlListResponses = urlService.viewAllUrls(page, size);
+        PageResponse<UrlResponse> urlListResponses = urlService.viewAllUrls(page, size);
         log.info("Url Controller :: Outgoing request: Urls fetched");
 
         return ResponseEntity
