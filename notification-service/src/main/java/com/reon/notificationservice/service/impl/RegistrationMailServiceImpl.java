@@ -31,7 +31,7 @@ public class RegistrationMailServiceImpl implements RegistrationMailService {
                 + "Thank you for registering with us.\n\n"
                 + "To complete your registration, please use the One-Time Password (OTP) below:\n\n"
                 + "OTP: " + registrationSuccessEvent.otp() + "\n\n"
-                + "This OTP is valid for the next 30 minutes. Please do not share this code with anyone.\n\n"
+                + "This OTP is valid for the next 5 minutes. Please do not share this code with anyone.\n\n"
                 + "If you did not request this, you can safely ignore this email.\n\n"
                 + "Regards,\nShortly Team";
 

@@ -18,7 +18,7 @@ public class RouteConfig {
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
                 .route("user-service-public", route -> route
-                        .path("/api/v1/user/register", "/api/v1/user/login", "/api/v1/user/verify-otp")
+                        .path("/api/v1/user/register", "/api/v1/user/login", "/api/v1/user/verify-otp", "/api/v1/user/resend-otp")
                         .uri("lb://user-service"))
                 .route("user-service-admin", route -> route
                         .path("/api/v1/admin/**")
@@ -39,6 +39,11 @@ public class RouteConfig {
                         .path("/api/v1/analytics/**")
                         .filters(authFilter -> authFilter.filter(authenticationFilter))
                         .uri("lb://analytics-service"))
+                // short links like /abc123 → /api/v1/redirect/abc123 (keep this route last)
+                .route("short-link", route -> route
+                        .path("/{shortCode}")
+                        .filters(filter -> filter.rewritePath("/(?<shortCode>.*)", "/api/v1/redirect/${shortCode}"))
+                        .uri("lb://url-service"))
                 .build();
     }
 }

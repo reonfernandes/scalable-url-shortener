@@ -54,6 +54,19 @@ public class UserController {
                 ));
     }
 
+    @PostMapping("/resend-otp")
+    public ResponseEntity<ApiResponse<Void>> resendOtp(@RequestParam(name = "email") String email) {
+        log.info("User Controller :: Incoming request for resending Otp: {}", email);
+        userService.resendOtp(email);
+        log.info("User Controller :: Outgoing request: Otp resent successfully");
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.of(
+                        HttpStatus.OK,
+                        "A new OTP has been sent to your email"
+                ));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> authentication(
             @Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response){

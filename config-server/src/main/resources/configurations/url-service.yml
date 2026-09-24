@@ -56,7 +56,7 @@ eureka:
 security:
     app:
         url:
-            base-url: https://microurl.ly
+            base-url: http://localhost:8080
         quota:
             free-tier-limit: 50
             premium-tier-limit: 500

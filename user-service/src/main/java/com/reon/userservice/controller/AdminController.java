@@ -49,7 +49,7 @@ public class AdminController {
     }
 
     @GetMapping(value = "/accounts")
-    public ResponseEntity<ApiResponse<Page<UserListResponse>>> getAccounts(@RequestParam(name = "page", defaultValue = "0") int pageNo,
+    public ResponseEntity<ApiResponse<Page<UserListResponse>>> getAccounts(@RequestParam(name = "page", defaultValue = "1") int pageNo,
                                                          @RequestParam(name = "size", defaultValue = "10") int pageSize) {
         log.info("Admin Controller :: Incoming request for fetching all users → page = {}, size = {}", pageNo, pageSize);
         Page<UserListResponse> userProfiles = userService.viewAllUsers(pageNo, pageSize);

@@ -58,5 +58,5 @@ security:
             deleted: user.deleted
             admin:
                 userState: user.state
-    cache:
-        url-ttl-minutes: 5
+    otp:
+        expiration-minutes: 5

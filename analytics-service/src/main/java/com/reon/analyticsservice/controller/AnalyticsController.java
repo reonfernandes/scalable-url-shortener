@@ -18,8 +18,9 @@ public class AnalyticsController {
     }
 
     @GetMapping("/{shortCode}")
-    public ResponseEntity<UrlStatsResponse> getStats(@PathVariable("shortCode") String shortCode) {
-        log.info("Analytics Controller :: Fetching stats for shortCode: {}", shortCode);
-        return ResponseEntity.ok(analyticsService.getStatsForUrl(shortCode));
+    public ResponseEntity<UrlStatsResponse> getStats(@PathVariable("shortCode") String shortCode,
+                                                     @RequestHeader("X-User-Id") String userId) {
+        log.info("Analytics Controller :: Fetching stats for shortCode: {}, userId: {}", shortCode, userId);
+        return ResponseEntity.ok(analyticsService.getStatsForUrl(shortCode, userId));
     }
 }

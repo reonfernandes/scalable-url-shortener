@@ -14,25 +14,25 @@ public interface AnalyticsRepository extends MongoRepository<Analytics, ObjectId
     List<Analytics> findAllByShortCode(String shortCode);
 
     @Aggregation(pipeline = {
-            "{ '$match': { 'shortCode' : ?0 } }",
+            "{ '$match': { 'shortCode' : ?0, 'userId' : ?1 } }",
             "{ '$group': { '_id': '$browser', 'value': { '$sum': 1 } } }",
             "{ '$project': { 'key': '$_id', 'value': 1, '_id': 0 } }"
     })
-    List<StatEntry> getBrowserStats(String shortCode);
+    List<StatEntry> getBrowserStats(String shortCode, String userId);
 
     @Aggregation(pipeline = {
-            "{ '$match': { 'shortCode' : ?0 } }",
+            "{ '$match': { 'shortCode' : ?0, 'userId' : ?1 } }",
             "{ '$group': { '_id': '$os', 'value': { '$sum': 1 } } }",
             "{ '$project': { 'key': '$_id', 'value': 1, '_id': 0 } }"
     })
-    List<StatEntry> getOsStats(String shortCode);
+    List<StatEntry> getOsStats(String shortCode, String userId);
 
     @Aggregation(pipeline = {
-            "{ '$match': { 'shortCode' : ?0 } }",
+            "{ '$match': { 'shortCode' : ?0, 'userId' : ?1 } }",
             "{ '$group': { '_id': '$country', 'value': { '$sum': 1 } } }",
             "{ '$project': { 'key': '$_id', 'value': 1, '_id': 0 } }"
     })
-    List<StatEntry> getCountryStats(String shortCode);
+    List<StatEntry> getCountryStats(String shortCode, String userId);
     
-    long countByShortCode(String shortCode);
+    long countByShortCodeAndUserId(String shortCode, String userId);
 }

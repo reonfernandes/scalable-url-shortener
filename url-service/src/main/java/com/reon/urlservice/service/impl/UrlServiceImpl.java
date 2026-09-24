@@ -58,6 +58,7 @@ public class UrlServiceImpl implements UrlService {
     }
 
     @Override
+    @Transactional
     public UrlResponse shortenUrl(UrlRequest urlRequest) {
         log.info("URL Service :: Processing new short url generation");
         Map<String, String> userTier = checkForUserTier();
@@ -78,7 +79,8 @@ public class UrlServiceImpl implements UrlService {
 
         // check for custom alias
         String requestedAlias = urlRequest.customAlias();
-        if (urlRepository.existsByShortCode(requestedAlias)) {
+        boolean hasAlias = requestedAlias != null && !requestedAlias.isBlank();
+        if (hasAlias && urlRepository.existsByShortCode(requestedAlias)) {
             log.info("Custom Alias: {}, not available", requestedAlias);
             throw new AliasAlreadyTakenException("Custom alias not available.");
         }
@@ -115,6 +117,7 @@ public class UrlServiceImpl implements UrlService {
     @Override
     @Transactional
     public void deleteUserUrls(String userId) {
+        evictUserUrlsFromCache(userId);
         urlRepository.deleteUserUrls(userId);
         log.info("URL Service :: Urls deleted for user: {}", userId);
     }
@@ -131,6 +134,9 @@ public class UrlServiceImpl implements UrlService {
             log.info("URL Service :: Deactivating all urls for user: {}", userId);
             urlRepository.deactivateUserUrls(userId);
         }
+
+        // cached links still have the old active flag, so remove them from redis
+        evictUserUrlsFromCache(userId);
 
     }
 
@@ -210,6 +216,11 @@ public class UrlServiceImpl implements UrlService {
     }
 
     // helper methods
+    private void evictUserUrlsFromCache(String userId) {
+        urlRepository.findShortCodesByUserId(userId)
+                .forEach(urlCacheService::evict);
+    }
+
     private UrlMapping buildAndSaveUrl(UrlRequest urlRequest, String userId) {
         boolean isUrlPasswordProtected = urlRequest.password() != null && !urlRequest.password().isBlank();
         String hashedUrl = null;
