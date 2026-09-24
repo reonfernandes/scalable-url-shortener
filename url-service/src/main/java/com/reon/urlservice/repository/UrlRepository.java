@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UrlRepository extends JpaRepository<UrlMapping, String> {
+public interface UrlRepository extends JpaRepository<UrlMapping, Long> {
     Optional<UrlMapping> findByShortCode(String shortCode);
     boolean existsByShortCode(String shortCode);
 

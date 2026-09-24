@@ -100,7 +100,7 @@ public class UrlServiceImpl implements UrlService {
         if (userId == null) throw new UnauthorizedUrlAccessException();
 
         log.warn("URL Service :: Deleting url with id: {}", urlId);
-        UrlMapping url = urlRepository.findById(String.valueOf(urlId)).orElseThrow(
+        UrlMapping url = urlRepository.findById(urlId).orElseThrow(
                 () -> new UrlNotFoundException("URL not found with id: " + urlId)
         );
 
@@ -171,7 +171,7 @@ public class UrlServiceImpl implements UrlService {
 
         log.info("URL Service :: Updating url for user: {}", userId);
 
-        UrlMapping urlMapping = urlRepository.findById(String.valueOf(urlId)).orElseThrow(
+        UrlMapping urlMapping = urlRepository.findById(urlId).orElseThrow(
                 () -> new UrlNotFoundException("URL not found with id: " + urlId)
         );
 
