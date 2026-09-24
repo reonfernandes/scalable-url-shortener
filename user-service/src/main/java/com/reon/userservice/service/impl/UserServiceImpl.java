@@ -201,8 +201,8 @@ public class UserServiceImpl implements UserService {
                 ResponseCookie accessTokenCookie = cookieService.accessTokenCookie(accessToken);
                 response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
 
+                // the token is only sent in the HttpOnly cookie, so page JavaScript can never read it
                 return LoginResponse.builder()
-                        .accessToken(accessToken)
                         .expiresIn(expirationTime)
                         .build();
             }
@@ -218,7 +218,6 @@ public class UserServiceImpl implements UserService {
         }
 
         return LoginResponse.builder()
-                .accessToken(null)
                 .expiresIn(0)
                 .build();
     }
