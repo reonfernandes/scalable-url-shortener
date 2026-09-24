@@ -1,6 +1,5 @@
 package com.reon.userservice.model;
 
-import com.reon.userservice.model.type.AuthProvider;
 import com.reon.userservice.model.type.Role;
 import com.reon.userservice.model.type.Tier;
 import jakarta.persistence.*;
@@ -35,21 +34,13 @@ public class User implements UserDetails {
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(name = "password")
+    @Column(name = "password", nullable = false)
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tier", nullable = false)
     @Builder.Default
     private Tier tier = Tier.FREE;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "auth_provider", nullable = false)
-    @Builder.Default
-    private AuthProvider authProvider = AuthProvider.LOCAL;
-
-    @Column(name = "provider_id")
-    private String providerId;
 
     @Enumerated(EnumType.STRING)
     @ElementCollection(fetch = FetchType.EAGER)

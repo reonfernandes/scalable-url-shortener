@@ -13,7 +13,6 @@ import com.reon.userservice.dto.response.UserProfile;
 import com.reon.userservice.jwt.JwtService;
 import com.reon.userservice.mapper.UserMapper;
 import com.reon.userservice.model.User;
-import com.reon.userservice.model.type.AuthProvider;
 import com.reon.userservice.model.type.Role;
 import com.reon.userservice.model.type.Tier;
 import com.reon.userservice.repository.UserRepository;
@@ -98,7 +97,6 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.mapToEntity(registrationRequest);
         user.setPassword(encoder.encode(registrationRequest.password()));
         user.setTier(Tier.FREE);
-        user.setAuthProvider(AuthProvider.LOCAL);
         user.setRole(EnumSet.of(Role.USER));
 
         User saveUser = userRepository.save(user);

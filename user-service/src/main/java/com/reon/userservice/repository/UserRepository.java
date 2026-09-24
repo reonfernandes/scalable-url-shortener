@@ -1,7 +1,6 @@
 package com.reon.userservice.repository;
 
 import com.reon.userservice.model.User;
-import com.reon.userservice.model.type.AuthProvider;
 import com.reon.userservice.model.type.Tier;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -15,7 +14,6 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
-    Optional<User> findByProviderIdAndAuthProvider(String providerId, AuthProvider authProvider);
 
     @Modifying
     @Query("UPDATE User u SET u.tier = :tier WHERE u.userId = :userId")
