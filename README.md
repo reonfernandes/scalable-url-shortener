@@ -129,8 +129,8 @@ Every service follows the same layering: **controller** (HTTP) → **service** (
 
 ### 2. Log in
 
-`POST /api/v1/user/login` checks the password and returns a JWT (valid **1 hour**). The token is sent both in
-the response body and as an HttpOnly cookie called `accessToken`.
+`POST /api/v1/user/login` checks the password and sets a JWT (valid **1 hour**) in an HttpOnly cookie called
+`accessToken`. The token is not in the response body, so page JavaScript can never read it.
 
 ### 3. Create a short URL
 
@@ -143,7 +143,8 @@ the response body and as an HttpOnly cookie called `accessToken`.
 ### 4. Open a short link (redirect)
 
 1. `GET /{shortCode}`: the gateway forwards it to `/api/v1/redirect/{shortCode}` on url-service.
-2. url-service looks in Redis first (key `url:short:<code>`, cached for **15 minutes**), then MySQL.
+2. url-service looks in Redis first (key `url:short:<code>`, cached for **15 minutes**), then MySQL. If Redis is
+   down, it reads from MySQL directly, so links keep working.
 3. It checks that the link is active, not expired, and that the password is correct (if it has one).
 4. It increases the click count, publishes a `url-clicked` event and replies with **302** to the long URL.
 5. analytics-service reads the event, parses the user agent and saves the click in MongoDB.
@@ -267,16 +268,29 @@ Response `201 Created`:
 
 Errors: `409` email already registered, `400` validation failed.
 
-#### Verify OTP: `POST /api/v1/user/verify-otp?email=john@example.com&otp=482913`
+#### Verify OTP: `POST /api/v1/user/verify-otp`
+
+Request:
+```json
+{
+  "email": "john@example.com",
+  "otp": "482913"
+}
+```
 
 Response `200 OK`:
 ```json
 { "status": 200, "message": "Verification successful" }
 ```
 
-Errors: `400` OTP is invalid, `400` OTP has expired, `409` user already verified, `404` user not found.
+Errors: `400` OTP is invalid (or not 6 digits), `400` OTP has expired, `409` user already verified, `404` user not found.
 
-#### Resend OTP: `POST /api/v1/user/resend-otp?email=john@example.com`
+#### Resend OTP: `POST /api/v1/user/resend-otp`
+
+Request:
+```json
+{ "email": "john@example.com" }
+```
 
 Response `200 OK`:
 ```json
@@ -295,13 +309,12 @@ Request:
 }
 ```
 
-Response `200 OK` (also sets the cookie `accessToken=<jwt>; HttpOnly; Secure; SameSite=Strict`):
+Response `200 OK`. The JWT is only in the cookie `accessToken=<jwt>; HttpOnly; Secure; SameSite=Strict`:
 ```json
 {
   "status": 200,
   "message": "Authentication successful",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
     "expiresIn": 3600
   }
 }
@@ -384,7 +397,7 @@ Deactivate / activate response `200 OK`:
 { "status": 200, "message": "Account deactivated successfully" }
 ```
 
-List users response `200 OK` (`data` is a Spring `Page`; its first item holds the users):
+List users response `200 OK` (`page` starts at 1, `size` is at most 100):
 ```json
 {
   "status": 200,
@@ -392,19 +405,18 @@ List users response `200 OK` (`data` is a Spring `Page`; its first item holds th
   "data": {
     "content": [
       {
-        "total": 2,
-        "userProfileList": [
-          {
-            "userId": "3f6c1a2e-...",
-            "name": "John Doe",
-            "email": "john@example.com",
-            "tier": "FREE",
-            "urlsCreated": 3,
-            "urlCreationLimit": 50
-          }
-        ]
+        "userId": "3f6c1a2e-...",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "tier": "FREE",
+        "urlsCreated": 3,
+        "urlCreationLimit": 50
       }
-    ]
+    ],
+    "page": 1,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
   }
 }
 ```
@@ -468,7 +480,7 @@ Errors: `403` URL limit reached for your plan, `409` custom alias not available,
 
 #### List: `GET /api/v1/url/my-urls?page=1&size=10`
 
-Response `200 OK` (`data` is a Spring `Page`; its first item holds your URLs):
+Response `200 OK` (`page` starts at 1, `size` is at most 100; each item has the same fields as the create response):
 ```json
 {
   "status": 200,
@@ -476,19 +488,18 @@ Response `200 OK` (`data` is a Spring `Page`; its first item holds your URLs):
   "data": {
     "content": [
       {
-        "total": 1,
-        "urlResponseList": [
-          {
-            "urlId": 1,
-            "shortCode": "my-blog",
-            "shortUrl": "http://localhost:8080/my-blog",
-            "longUrl": "https://www.example.com/some/very/long/path",
-            "clickCount": 12,
-            "isActive": true
-          }
-        ]
+        "urlId": 1,
+        "shortCode": "my-blog",
+        "shortUrl": "http://localhost:8080/my-blog",
+        "longUrl": "https://www.example.com/some/very/long/path",
+        "clickCount": 12,
+        "isActive": true
       }
-    ]
+    ],
+    "page": 1,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
   }
 }
 ```
@@ -524,14 +535,29 @@ Errors: `403` not your URL, `404` URL not found.
 
 ### Redirect
 
-| Method | Endpoint                                   | Auth   |
-|--------|--------------------------------------------|--------|
-| `GET`  | `/{shortCode}`                             | Public |
-| `GET`  | `/api/v1/redirect/{shortCode}`             | Public |
+| Method | Endpoint                                   | Auth   | Description                         |
+|--------|--------------------------------------------|--------|-------------------------------------|
+| `GET`  | `/{shortCode}`                             | Public | Open a link (browser follows a 302) |
+| `GET`  | `/api/v1/redirect/{shortCode}`             | Public | Same as above                       |
+| `POST` | `/api/v1/redirect/{shortCode}`             | Public | Unlock a password-protected link    |
 
-For password-protected links add `?password=<password>`.
+**Normal links:** `GET` responds with `302 Found` and header `Location: <long URL>`.
 
-Response: `302 Found` with header `Location: <long URL>`.
+**Password-protected links:** a `GET` returns `400 URL is password protected`. The frontend asks the visitor for the
+password and sends it in the body (never in the URL):
+
+```json
+{ "password": "open123" }
+```
+
+Response `200 OK`, then the frontend sends the visitor to `longUrl`:
+```json
+{
+  "status": 200,
+  "message": "Success",
+  "data": { "longUrl": "https://www.example.com/some/very/long/path" }
+}
+```
 
 | Status | Message                        | When                              |
 |--------|--------------------------------|-----------------------------------|
@@ -582,7 +608,8 @@ Response `200 OK` (this endpoint returns the stats directly, without the `status
 
 ## Kafka Events
 
-Event classes live in `common-lib/src/main/java/com/reon/events/`.
+Event classes live in `common-lib/src/main/java/com/reon/events/`. Consumers only accept classes from that
+package, and a message that can't be read is logged and skipped instead of blocking the consumer.
 
 | Topic             | Producer     | Consumer             | Payload                                                          | Purpose                           |
 |-------------------|--------------|----------------------|------------------------------------------------------------------|-----------------------------------|
@@ -644,7 +671,9 @@ curl -X POST http://localhost:8080/api/v1/user/register \
   -H "Content-Type: application/json" \
   -d '{"name":"John Doe","email":"john@example.com","password":"Secret@123"}'
 
-curl -X POST "http://localhost:8080/api/v1/user/verify-otp?email=john@example.com&otp=123456"
+curl -X POST http://localhost:8080/api/v1/user/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@example.com","otp":"123456"}'
 
 # log in and save the cookie
 curl -c cookies.txt -X POST http://localhost:8080/api/v1/user/login \
@@ -660,8 +689,8 @@ curl -b cookies.txt -X POST http://localhost:8080/api/v1/url/new \
 curl -i http://localhost:8080/aaaaab
 ```
 
-> The cookie is marked `Secure`. If `curl` does not send it back over plain `http`, pass the token as a header
-> instead: `-H "Authorization: Bearer <accessToken>"`.
+> The cookie is marked `Secure`. If `curl` does not send it back over plain `http`, copy the token from the
+> `accessToken` line in `cookies.txt` and send it as a header instead: `-H "Authorization: Bearer <token>"`.
 
 ---
 
