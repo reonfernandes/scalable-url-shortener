@@ -16,7 +16,7 @@ public interface UserService {
     UserProfile fetchUserProfile();
     void updateUserProfile(UpdateProfileRequest request);
 
-    void deleteAccount(String userId);
+    void deleteAccount();
     /** Cancels the given token so it can't be used again, even before it expires. */
     void logout(String accessToken);
 
