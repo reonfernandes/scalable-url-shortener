@@ -82,10 +82,7 @@ public class RedirectController {
     }
 
     private RedirectRequest buildRedirectRequest(String shortCode, String password, HttpServletRequest request) {
-        String ipAddress = request.getHeader("X-Forwarded-For");
-        if (ipAddress == null || ipAddress.isEmpty()) {
-            ipAddress = request.getRemoteAddr();
-        }
+        String ipAddress = clientIp(request);
 
         return RedirectRequest.builder()
                 .shortCode(shortCode)
@@ -94,5 +91,18 @@ public class RedirectController {
                 .userAgent(request.getHeader("User-Agent"))
                 .referrer(request.getHeader("Referer"))
                 .build();
+    }
+
+    /**
+     * X-Forwarded-For is "client-sent values, ..., ip the gateway saw". A client can put anything
+     * in the first entries, but the last one is added by our gateway, so only that one is trusted.
+     */
+    private String clientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor == null || forwardedFor.isBlank()) {
+            return request.getRemoteAddr();
+        }
+        String[] addresses = forwardedFor.split(",");
+        return addresses[addresses.length - 1].trim();
     }
 }

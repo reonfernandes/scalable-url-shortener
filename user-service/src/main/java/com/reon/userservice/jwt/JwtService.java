@@ -1,6 +1,8 @@
 package com.reon.userservice.jwt;
 
 import com.reon.userservice.model.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -8,10 +10,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -56,6 +60,19 @@ public class JwtService {
                 .expiration(expiration)
                 .signWith(key())
                 .compact();
+    }
+
+    /** The token's claims if it is signed by us and not expired, otherwise empty. */
+    public Optional<Claims> parse(String token) {
+        try {
+            return Optional.of(Jwts.parser()
+                    .verifyWith((SecretKey) key())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload());
+        } catch (JwtException | IllegalArgumentException exception) {
+            return Optional.empty();
+        }
     }
 
     private Key key() {

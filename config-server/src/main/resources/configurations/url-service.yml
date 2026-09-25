@@ -60,6 +60,9 @@ eureka:
         prefer-ip-address: true
 
 security:
+    gateway:
+        # Must match the API gateway's; requests without it are rejected (GatewayOnlyFilter)
+        secret: ${GATEWAY_SECRET}
     app:
         url:
             base-url: ${SHORT_URL_BASE:http://localhost:8080}

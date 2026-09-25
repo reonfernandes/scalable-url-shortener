@@ -31,3 +31,8 @@ eureka:
             defaultZone: http://localhost:8500/eureka/
     instance:
         prefer-ip-address: true
+
+security:
+    gateway:
+        # Must match the API gateway's; requests without it are rejected (GatewayOnlyFilter)
+        secret: ${GATEWAY_SECRET}
