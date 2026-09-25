@@ -162,6 +162,17 @@ public class UrlServiceImpl implements UrlService {
             throw new UnauthorizedUrlAccessException();
         }
 
+        // the remove flags are optional, so they can be null
+        boolean removeExpiry = Boolean.TRUE.equals(updateUrlRequest.removeExpiry());
+        boolean removePassword = Boolean.TRUE.equals(updateUrlRequest.removePassword());
+        boolean hasNewPassword = updateUrlRequest.password() != null && !updateUrlRequest.password().isBlank();
+        if (removeExpiry && updateUrlRequest.expiresAt() != null) {
+            throw new IllegalArgumentException("Send either expiresAt or removeExpiry, not both.");
+        }
+        if (removePassword && hasNewPassword) {
+            throw new IllegalArgumentException("Send either password or removePassword, not both.");
+        }
+
         // capture the shortCode before any changes made to alias - old key in redis
         String shortCodeToEvict = urlMapping.getShortCode();
 
@@ -183,11 +194,15 @@ public class UrlServiceImpl implements UrlService {
             urlMapping.setShortCode(alias);
         }
 
-        if (updateUrlRequest.expiresAt() != null) {
+        if (removeExpiry) {
+            urlMapping.setExpiresAt(null);
+        } else if (updateUrlRequest.expiresAt() != null) {
             urlMapping.setExpiresAt(updateUrlRequest.expiresAt());
         }
 
-        if (updateUrlRequest.password() != null && !updateUrlRequest.password().isBlank()) {
+        if (removePassword) {
+            urlMapping.setPasswordHash(null);
+        } else if (hasNewPassword) {
             String hashed = encoder.encode(updateUrlRequest.password());
             urlMapping.setPasswordHash(hashed);
         }

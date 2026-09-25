@@ -29,6 +29,12 @@ public record UpdateUrlRequest(
         LocalDateTime expiresAt,
 
         @Size(min = 4, max = 72, message = "Password must be between 4 and 72 characters")
-        String password
+        String password,
+
+        // true = the link never expires (an empty expiresAt can't say that, it means "no change")
+        Boolean removeExpiry,
+
+        // true = anyone can open the link again without a password
+        Boolean removePassword
 ) {
 }
