@@ -17,10 +17,10 @@ public class AnalyticsController {
         this.analyticsService = analyticsService;
     }
 
-    @GetMapping("/{shortCode}")
-    public ResponseEntity<UrlStatsResponse> getStats(@PathVariable("shortCode") String shortCode,
+    @GetMapping("/{urlId}")
+    public ResponseEntity<UrlStatsResponse> getStats(@PathVariable("urlId") Long urlId,
                                                      @RequestHeader("X-User-Id") String userId) {
-        log.info("Analytics Controller :: Fetching stats for shortCode: {}, userId: {}", shortCode, userId);
-        return ResponseEntity.ok(analyticsService.getStatsForUrl(shortCode, userId));
+        log.info("Analytics Controller :: Fetching stats for urlId: {}, userId: {}", urlId, userId);
+        return ResponseEntity.ok(analyticsService.getStatsForUrl(urlId, userId));
     }
 }

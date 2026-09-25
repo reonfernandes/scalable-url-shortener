@@ -1,40 +1,40 @@
 package com.reon.analyticsservice.repository;
 
 import com.reon.analyticsservice.document.Analytics;
+import com.reon.analyticsservice.dto.StatEntry;
 import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-import org.springframework.data.mongodb.repository.Aggregation;
 import java.util.List;
-import com.reon.analyticsservice.dto.StatEntry;
 
+// Clicks are looked up by urlId, not shortCode: the id stays the same when a link's alias changes.
 @Repository
 public interface AnalyticsRepository extends MongoRepository<Analytics, ObjectId> {
-    List<Analytics> findAllByShortCode(String shortCode);
 
     @Aggregation(pipeline = {
-            "{ '$match': { 'shortCode' : ?0, 'userId' : ?1 } }",
+            "{ '$match': { 'urlId' : ?0, 'userId' : ?1 } }",
             "{ '$group': { '_id': '$browser', 'value': { '$sum': 1 } } }",
             "{ '$project': { 'key': '$_id', 'value': 1, '_id': 0 } }"
     })
-    List<StatEntry> getBrowserStats(String shortCode, String userId);
+    List<StatEntry> getBrowserStats(String urlId, String userId);
 
     @Aggregation(pipeline = {
-            "{ '$match': { 'shortCode' : ?0, 'userId' : ?1 } }",
+            "{ '$match': { 'urlId' : ?0, 'userId' : ?1 } }",
             "{ '$group': { '_id': '$os', 'value': { '$sum': 1 } } }",
             "{ '$project': { 'key': '$_id', 'value': 1, '_id': 0 } }"
     })
-    List<StatEntry> getOsStats(String shortCode, String userId);
+    List<StatEntry> getOsStats(String urlId, String userId);
 
     @Aggregation(pipeline = {
-            "{ '$match': { 'shortCode' : ?0, 'userId' : ?1 } }",
+            "{ '$match': { 'urlId' : ?0, 'userId' : ?1 } }",
             "{ '$group': { '_id': '$country', 'value': { '$sum': 1 } } }",
             "{ '$project': { 'key': '$_id', 'value': 1, '_id': 0 } }"
     })
-    List<StatEntry> getCountryStats(String shortCode, String userId);
-    
-    long countByShortCodeAndUserId(String shortCode, String userId);
+    List<StatEntry> getCountryStats(String urlId, String userId);
+
+    long countByUrlIdAndUserId(String urlId, String userId);
 
     long deleteByUserId(String userId);
 }

@@ -5,7 +5,7 @@ import java.util.Map;
 
 @Builder
 public record UrlStatsResponse(
-        String shortCode,
+        Long urlId,
         long totalClicks,
         Map<String, Long> clicksByBrowser,
         Map<String, Long> clicksByOs,
