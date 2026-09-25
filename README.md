@@ -343,16 +343,15 @@ Response `200 OK`:
 
 Errors: `401` current password is incorrect, `400` validation failed.
 
-#### Delete account: `DELETE /api/v1/user/me/delete?userId=<your-user-id>`
+#### Delete account: `DELETE /api/v1/user/me/delete`
 
-`userId` must be your own id. All your short links are deleted as well.
+Deletes the account you are logged in as; no id is needed. All your short links and click data are deleted
+as well, and your login stops working.
 
 Response `200 OK`:
 ```json
 { "status": 200, "message": "Account deleted successfully" }
 ```
-
-Errors: `403` you can only delete your own account.
 
 ---
 
@@ -595,7 +594,7 @@ Click totals, `200 OK` (every requested id is in the answer; links without click
 |--------|-------------------------------------------------------------------------------|
 | `400`  | Validation failed, invalid JSON, missing/invalid parameter, link inactive/expired/password errors |
 | `401`  | No/invalid JWT, wrong email or password, account disabled                     |
-| `403`  | Not an admin, not your URL or account                                         |
+| `403`  | Not an admin, not your URL                                                    |
 | `404`  | User or URL not found, unknown endpoint                                       |
 | `409`  | Email already registered, custom alias taken                                  |
 | `429`  | Too many password attempts from your IP address, try again in a few seconds   |
@@ -747,6 +746,8 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 
 | File                  | Key                                    | Default                 | Meaning                           |
 |-----------------------|----------------------------------------|-------------------------|-----------------------------------|
+| `user-service.yml`, `url-service.yml` | `spring.jpa.hibernate.ddl-auto` | `JPA_DDL_AUTO` in `.env` (`update`) | `update` changes tables for you; use `validate` in production |
+| `user-service.yml`, `url-service.yml` | `spring.jpa.show-sql` | `JPA_SHOW_SQL` in `.env` (`false`) | Print every SQL query |
 | `user-service.yml`    | `security.jwt.expiration-time`         | `3600`                  | JWT lifetime (seconds)            |
 | `user-service.yml`    | `security.cookie.name`                 | `accessToken`           | Name of the JWT cookie            |
 | `url-service.yml`     | `security.app.url.base-url`            | `SHORT_URL_BASE` in `.env` | Prefix used to build `shortUrl` |

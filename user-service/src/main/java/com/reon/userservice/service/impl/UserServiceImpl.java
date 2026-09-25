@@ -197,26 +197,20 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteAccount(String userId) {
+    public void deleteAccount() {
+        // the id comes from the login token (via the gateway), so users can only delete their own account
+        String userId = httpRequest.getHeader("X-User-Id");
+        if (userId == null) throw new UserNotFoundException("User not found.");
+
         log.warn("User Service :: Deleting user profile: Id: {}", userId);
+        User user = findIfUserIsActive(userId);
+        userRepository.delete(user);
+        tokenRevocationService.revokeAllTokens(userId);
+        log.info("Account deleted: userId={}", userId);
 
-        // userId comes from the request param, so it is never null; the header can be missing
-        String headerUserId = httpRequest.getHeader("X-User-Id");
-        if (userId.equals(headerUserId)) {
-            User user = findIfUserIsActive(userId);
-            if (user != null) {
-                userRepository.delete(user);
-                tokenRevocationService.revokeAllTokens(userId);
-                log.info("Account deleted: userId={}", userId);
-
-                // publish event
-                publishUserAccountDeletionEvent(userId);
-                log.info("User Service :: Event for user account deletion successful: {}", userId);
-            }
-            log.warn("User Service :: Profile deleted");
-        } else {
-            throw new ForbiddenOperationException("You can only delete your own account.");
-        }
+        // publish event
+        publishUserAccountDeletionEvent(userId);
+        log.info("User Service :: Event for user account deletion successful: {}", userId);
     }
 
     // admin specific methods

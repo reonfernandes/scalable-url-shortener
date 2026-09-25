@@ -109,10 +109,11 @@ public class UserController {
                 ));
     }
 
+    // deletes the logged-in user's account; the gateway sends their id in X-User-Id
     @DeleteMapping("/me/delete")
-    public ResponseEntity<ApiResponse<Void>> deleteAccount(@RequestParam(name = "userId") String userId){
-        log.warn("User Controller :: Incoming request for deleting account: {}", userId);
-        userService.deleteAccount(userId);
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(){
+        log.warn("User Controller :: Incoming request for deleting account");
+        userService.deleteAccount();
         log.warn("User Controller :: Outgoing request: Account deleted.");
 
         return ResponseEntity
