@@ -5,6 +5,7 @@ import com.reon.exception.InvalidUrlPasswordException;
 import com.reon.exception.PasswordRequiredException;
 import com.reon.exception.UrlExpiredException;
 import com.reon.exception.UrlNotActiveException;
+import com.reon.urlservice.config.KafkaConfig;
 import com.reon.urlservice.dto.CachedUrlDTO;
 import com.reon.urlservice.dto.RedirectRequest;
 import com.reon.urlservice.dto.response.UrlResponse;
@@ -85,9 +86,16 @@ public class RedirectServiceImpl implements RedirectService {
                 .clickedAt(LocalDateTime.now())
                 .build();
 
+        // send() returns straight away; most failures (e.g. Kafka is down) only show up later,
+        // so they are logged in whenComplete. The visitor is redirected either way.
         try {
-            kafkaTemplate.send("url-clicked", event);
-            log.info("Redirect Service :: Published UrlClickEvent for shortCode: {}", url.shortCode());
+            kafkaTemplate.send(KafkaConfig.URL_CLICKED_TOPIC, event).whenComplete((result, exception) -> {
+                if (exception != null) {
+                    log.error("Redirect Service :: Failed to publish UrlClickEvent for shortCode: {}", url.shortCode(), exception);
+                } else {
+                    log.info("Redirect Service :: Published UrlClickEvent for shortCode: {}", url.shortCode());
+                }
+            });
         } catch (Exception e) {
             log.error("Redirect Service :: Failed to publish UrlClickEvent for shortCode: {}", url.shortCode(), e);
         }
