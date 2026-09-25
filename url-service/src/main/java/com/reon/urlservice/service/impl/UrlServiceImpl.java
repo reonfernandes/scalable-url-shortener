@@ -134,6 +134,20 @@ public class UrlServiceImpl implements UrlService {
     }
 
     @Override
+    public UrlResponse viewUrl(Long urlId) {
+        String userId = httpRequest.getHeader("X-User-Id");
+        if (userId == null) throw new UnauthorizedUrlAccessException();
+
+        UrlMapping url = urlRepository.findById(urlId).orElseThrow(
+                () -> new UrlNotFoundException("URL not found with id: " + urlId)
+        );
+        if (!url.getUserId().equals(userId)) {
+            throw new UnauthorizedUrlAccessException();
+        }
+        return urlMapper.urlResponseToUser(url);
+    }
+
+    @Override
     public void updateShortenedUrl(Long urlId, UpdateUrlRequest updateUrlRequest) {
         String userId = httpRequest.getHeader("X-User-Id");
         if (userId == null) throw new UnauthorizedUrlAccessException();

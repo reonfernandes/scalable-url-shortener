@@ -9,6 +9,7 @@ public interface UrlService {
     // basic ops
     UrlResponse shortenUrl(UrlRequest urlRequest);
     PageResponse<UrlResponse> viewAllUrls(int page, int size);
+    UrlResponse viewUrl(Long urlId);
     void updateShortenedUrl(Long urlId, UpdateUrlRequest updateUrlRequest);
     void deleteUrl(Long urlId);
 
