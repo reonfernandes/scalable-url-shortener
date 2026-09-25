@@ -1,12 +1,3 @@
-# Infrastructure for running the backend locally: MySQL, MongoDB, Redis and Kafka.
-# The Spring Boot services run on your machine and connect to these on localhost.
-#
-#   cp .env.example .env    # then fill in your own passwords
-#   docker compose up -d
-#
-# The databases user_service and url_service are created by the services themselves
-# (createDatabaseIfNotExist=true in their JDBC URLs).
-
 services:
     mysql:
         image: mysql:8.4
@@ -71,8 +62,6 @@ services:
         environment:
             KAFKA_NODE_ID: 1
             KAFKA_PROCESS_ROLES: broker,controller
-            # Listen on all interfaces inside the container. PLAINTEXT is for other
-            # containers (kafka:29092), PLAINTEXT_HOST is for apps on your machine (localhost:9092).
             KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
             KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
             KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT

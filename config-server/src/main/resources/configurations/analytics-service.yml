@@ -6,8 +6,6 @@ spring:
         host: ${MONGO_HOST:localhost}
         port: ${MONGO_PORT:27017}
         database: ${MONGO_DATABASE:analytics}
-        username: ${MONGO_ROOT_USERNAME}
-        password: ${MONGO_ROOT_PASSWORD}
         # the root user created by Docker lives in the "admin" database
         authentication-database: admin
     kafka:
