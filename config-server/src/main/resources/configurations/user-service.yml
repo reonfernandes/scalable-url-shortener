@@ -31,6 +31,9 @@ eureka:
         prefer-ip-address: true
 
 security:
+    gateway:
+        # Must match the API gateway's; requests without it are rejected (GatewayOnlyFilter)
+        secret: ${GATEWAY_SECRET}
     jwt:
         secret-key: ${JWT_SECRET}
         expiration-time: 3600

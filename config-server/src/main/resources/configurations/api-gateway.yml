@@ -24,3 +24,6 @@ security:
         secret-key: ${JWT_SECRET}
     cookie:
         name: accessToken
+    gateway:
+        # Sent to every service in X-Gateway-Secret; services reject requests without it
+        secret: ${GATEWAY_SECRET}
