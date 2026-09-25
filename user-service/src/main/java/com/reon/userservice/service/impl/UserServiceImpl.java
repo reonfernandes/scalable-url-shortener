@@ -219,6 +219,10 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deactivateAccount(String userId) {
         log.info("User Service :: Deactivating user account: {}", userId);
+        // an admin locking themselves out would leave nobody to undo it
+        if (userId.equals(httpRequest.getHeader("X-User-Id"))) {
+            throw new ForbiddenOperationException("You can't deactivate your own account.");
+        }
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("User not found.")
         );
