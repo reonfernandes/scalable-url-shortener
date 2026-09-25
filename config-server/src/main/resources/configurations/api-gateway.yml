@@ -21,6 +21,6 @@ eureka:
 
 security:
     jwt:
-        secret-key: d3edffa82ec4cd4d4b83214c85275e2dfeefd1a335300139c4bfcf7702e4f141
+        secret-key: ${JWT_SECRET}
     cookie:
         name: accessToken
