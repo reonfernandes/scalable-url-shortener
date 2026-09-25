@@ -318,10 +318,15 @@ Response `200 OK`:
   "data": {
     "userId": "3f6c1a2e-8d4b-4c1e-9a77-2b5e0c9d1f10",
     "name": "John Doe",
-    "email": "john@example.com"
+    "email": "john@example.com",
+    "roles": ["USER"],
+    "active": true,
+    "createdAt": "2026-09-24T10:15:30.123"
   }
 }
 ```
+
+`roles` is `["ADMIN", "USER"]` for an admin; the frontend uses it to show the admin pages.
 
 #### Update profile: `PATCH /api/v1/user/me/update`
 
@@ -363,10 +368,18 @@ Requires a JWT with `ROLE_ADMIN`.
 |--------|--------------------------------------------------|------------------------------------------------|
 | `PUT`  | `/api/v1/admin/account/deactivate?userId=<id>`   | Block a user and turn off all their links      |
 | `PUT`  | `/api/v1/admin/account/activate?userId=<id>`     | Unblock a user and turn their links back on    |
-| `GET`  | `/api/v1/admin/accounts?page=1&size=10`          | List users (page starts at 1)                  |
+| `GET`  | `/api/v1/admin/accounts?page=1&size=10&search=&status=all` | List users, newest first (page starts at 1) |
+
+List filters (both optional):
+
+| Parameter | Values                                   | Meaning                                  |
+|-----------|------------------------------------------|------------------------------------------|
+| `search`  | any text                                 | Part of a name or email, any letter case |
+| `status`  | `all` (default), `active`, `deactivated` | Other values return `400`                |
 
 Deactivating a user who is already deactivated (or activating an active one) changes nothing and still
-returns `200`. An unknown `userId` returns `404`.
+returns `200`. An unknown `userId` returns `404`. An admin can't deactivate their own account (`403`), so there
+is always someone left to undo it.
 
 Deactivate / activate response `200 OK`:
 ```json
@@ -383,7 +396,10 @@ List users response `200 OK` (`page` starts at 1, `size` is at most 100):
       {
         "userId": "3f6c1a2e-...",
         "name": "John Doe",
-        "email": "john@example.com"
+        "email": "john@example.com",
+        "roles": ["USER"],
+        "active": true,
+        "createdAt": "2026-09-24T10:15:30.123"
       }
     ],
     "page": 1,
