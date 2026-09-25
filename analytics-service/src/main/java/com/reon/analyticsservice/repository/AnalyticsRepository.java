@@ -35,4 +35,6 @@ public interface AnalyticsRepository extends MongoRepository<Analytics, ObjectId
     List<StatEntry> getCountryStats(String shortCode, String userId);
     
     long countByShortCodeAndUserId(String shortCode, String userId);
+
+    long deleteByUserId(String userId);
 }
