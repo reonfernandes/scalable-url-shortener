@@ -680,6 +680,7 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 | `user-service.yml`    | `security.jwt.expiration-time`         | `3600`                  | JWT lifetime (seconds)            |
 | `user-service.yml`    | `security.cookie.name`                 | `accessToken`           | Name of the JWT cookie            |
 | `url-service.yml`     | `security.app.url.base-url`            | `SHORT_URL_BASE` in `.env` | Prefix used to build `shortUrl` |
+| `url-service.yml`     | `security.app.ui.base-url`             | `UI_BASE_URL` in `.env` | Where password-protected links send visitors (`/unlock/<code>`) |
 | `url-service.yml`     | `security.app.cache.url-ttl-minutes`   | `15`                    | How long a link stays in Redis    |
 
 ---
