@@ -9,8 +9,11 @@ spring:
         password: ${MYSQL_ROOT_PASSWORD}
     jpa:
         hibernate:
-            ddl-auto: update
-        show-sql: true
+            # update: Hibernate changes the tables to match the entities (fine for development).
+            # For production set JPA_DDL_AUTO=validate and change the tables yourself.
+            ddl-auto: ${JPA_DDL_AUTO:update}
+        # true prints every SQL query; handy while debugging, too noisy otherwise
+        show-sql: ${JPA_SHOW_SQL:false}
         properties:
             hibernate:
                 dialect: org.hibernate.dialect.MySQLDialect
