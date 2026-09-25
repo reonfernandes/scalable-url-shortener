@@ -45,29 +45,16 @@ public class JwtService {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
     }
 
-    private Claims getClaims(String token) {
-        return Jwts.parser()
-                .verifyWith((SecretKey) key())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    public boolean isTokenValid(String token) {
+    /** The token's claims if it is signed with our key and not expired, otherwise empty. */
+    public Optional<Claims> parseClaims(String token) {
         try {
-            getClaims(token);
-            return true;
+            return Optional.of(Jwts.parser()
+                    .verifyWith((SecretKey) key())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload());
         } catch (JwtException | IllegalArgumentException exception) {
-            return false;
+            return Optional.empty();
         }
-    }
-
-    public String getUserId(String token) {
-        return getClaims(token)
-                .get("userId", String.class);
-    }
-
-    public String getRoles(String token) {
-        return getClaims(token).get("roles", String.class);
     }
 }

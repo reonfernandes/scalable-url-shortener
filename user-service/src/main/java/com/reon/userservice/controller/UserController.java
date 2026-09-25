@@ -9,6 +9,7 @@ import com.reon.userservice.dto.response.RegistrationResponse;
 import com.reon.userservice.dto.response.UserProfile;
 import com.reon.userservice.service.CookieService;
 import com.reon.userservice.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -62,8 +63,10 @@ public class UserController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
         log.info("User Controller :: Incoming request for logout");
+        // Clearing the cookie isn't enough: a copied token would still work until it expires.
+        cookieService.readAccessToken(request).ifPresent(userService::logout);
         ResponseCookie clearedCookie = cookieService.clearAccessTokenCookie();
         log.info("User Controller :: Outgoing request: Logged out");
 

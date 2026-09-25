@@ -15,6 +15,7 @@ import com.reon.userservice.mapper.UserMapper;
 import com.reon.userservice.model.User;
 import com.reon.userservice.model.type.Role;
 import com.reon.userservice.repository.UserRepository;
+import com.reon.userservice.security.TokenRevocationService;
 import com.reon.userservice.service.CookieService;
 import com.reon.userservice.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,6 +63,7 @@ public class UserServiceImpl implements UserService {
     private final CookieService cookieService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final HttpServletRequest httpRequest;
+    private final TokenRevocationService tokenRevocationService;
 
     public UserServiceImpl(
             @Value("${security.jwt.expiration-time}") Long expirationTime,
@@ -69,7 +71,8 @@ public class UserServiceImpl implements UserService {
             @Value("${security.kafka.topic.admin.userState}") String adminStateTopic,
             UserRepository userRepository, UserMapper userMapper, PasswordEncoder encoder, JwtService jwtService,
             AuthenticationManager authenticationManager, CookieService cookieService,
-            KafkaTemplate<String, Object> kafkaTemplate, HttpServletRequest httpRequest
+            KafkaTemplate<String, Object> kafkaTemplate, HttpServletRequest httpRequest,
+            TokenRevocationService tokenRevocationService
     ) {
         this.expirationTime = expirationTime;
         this.userAccountDeleteTopic = userAccountDeleteTopic;
@@ -82,6 +85,7 @@ public class UserServiceImpl implements UserService {
         this.cookieService = cookieService;
         this.kafkaTemplate = kafkaTemplate;
         this.httpRequest = httpRequest;
+        this.tokenRevocationService = tokenRevocationService;
     }
 
     @Override
@@ -141,6 +145,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void logout(String accessToken) {
+        jwtService.parse(accessToken).ifPresent(claims -> {
+            tokenRevocationService.revokeToken(claims.getId(), claims.getExpiration().toInstant());
+            log.info("User Service :: Token revoked for userId: {}", claims.get("userId", String.class));
+        });
+    }
+
+    @Override
     public UserProfile fetchUserProfile() {
         log.info("User Service :: Fetching User Profile");
 
@@ -194,6 +206,7 @@ public class UserServiceImpl implements UserService {
             User user = findIfUserIsActive(userId);
             if (user != null) {
                 userRepository.delete(user);
+                tokenRevocationService.revokeAllTokens(userId);
                 log.info("Account deleted: userId={}", userId);
 
                 // publish event
@@ -214,6 +227,8 @@ public class UserServiceImpl implements UserService {
         User user = findIfUserIsActive(userId);
         if (user != null){
             userRepository.deactivateUser(user.getUserId());
+            // the user may still hold a valid token; cancel it so they're logged out now
+            tokenRevocationService.revokeAllTokens(userId);
             publishUserStateEvent(userId, false);
         }
         log.info("User Service :: Account deactivated");

@@ -22,6 +22,12 @@ spring:
             value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
             acks: all
             retries: 3
+    # Redis holds the list of cancelled tokens that the gateway checks
+    data:
+        redis:
+            host: ${REDIS_HOST:localhost}
+            port: ${REDIS_PORT:6379}
+            timeout: 2000ms
 
 eureka:
     client:
