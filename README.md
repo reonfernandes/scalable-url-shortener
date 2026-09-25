@@ -52,6 +52,8 @@ flowchart LR
     User --- MySQL1[(MySQL user_service)]
     Url --- MySQL2[(MySQL url_service)]
     Url --- Redis[(Redis)]
+    User --- Redis
+    Gateway --- Redis
     Analytics --- Mongo[(MongoDB)]
 ```
 
@@ -63,8 +65,8 @@ flowchart LR
 |--------------------------|--------|-----------------------------------------------------------------------------------------------------------|
 | **config-server**        | `8600` | Central configuration. Serves the YAML files in `config-server/src/main/resources/configurations/`.       |
 | **discovery-server**     | `8500` | Eureka registry. Every service registers here so others can find it by name (e.g. `lb://url-service`).    |
-| **api-gateway**          | `8080` | Single entry point. Routes requests, validates the JWT and blocks non-admins from admin routes.           |
-| **user-service**         | `8100` | Registration, login, logout, profile, account deletion and admin actions. Uses MySQL.                      |
+| **api-gateway**          | `8080` | Single entry point. Routes requests, validates the JWT, blocks non-admins from admin routes and limits password attempts. |
+| **user-service**         | `8100` | Registration, login, logout, profile, account deletion and admin actions. Uses MySQL, and Redis for cancelled tokens. |
 | **url-service**          | `8101` | Creates, lists, updates and deletes short URLs, and handles redirects. Uses MySQL and a Redis cache.      |
 | **analytics-service**    | `8103` | Saves every click (browser, OS, device, referrer) in MongoDB and returns stats per link.                  |
 | **common-lib**           | –      | Shared code: Kafka event classes, custom exceptions, `ApiResponse` / `ErrorResponse` and the global error handler. |
@@ -82,7 +84,7 @@ flowchart LR
 | Configuration       | Spring Cloud Config (native / classpath)       |
 | Messaging           | Apache Kafka                                   |
 | Databases           | MySQL (users, URLs), MongoDB (analytics)       |
-| Cache               | Redis (redirect cache)                         |
+| Cache               | Redis (redirect cache, rate limits, cancelled tokens) |
 | Security            | Spring Security, JWT (JJWT 0.13), BCrypt       |
 | User-agent parsing  | Yauaa                                          |
 | Build               | Maven (multi-module)                           |
@@ -166,7 +168,15 @@ Click stats for a link come from `GET /api/v1/analytics/{shortCode}`.
   | `X-User-Roles` | `ROLE_USER`   |
 
 - Any `X-User-*` headers sent by the client are removed on every route, so nobody can pretend to be another user.
-- Missing or invalid token → **401** (empty body). Non-admin calling `/api/v1/admin/**` → **403**.
+- Missing, invalid or cancelled token → **401** (empty body). Non-admin calling `/api/v1/admin/**` → **403**.
+- **Cancelled tokens:** logging out cancels that token. Deactivating or deleting an account cancels every token the
+  user has. The list of cancelled tokens is kept in Redis until the tokens would have expired anyway.
+- **Password attempts are limited** per IP address: register, login and unlocking a protected link allow
+  10 quick attempts, then 1 every 6 seconds. Over the limit → **429 Too Many Requests**.
+- **Login does not reveal which emails exist:** a wrong email and a wrong password give the same
+  `Invalid Credentials` message. "Account is disabled" is only shown after the correct password.
+- **Services only accept requests from the gateway:** the gateway adds an `X-Gateway-Secret` header (the
+  `GATEWAY_SECRET` from `.env`). A request that reaches a service directly without it → **403**.
 - **Making an admin:** there is no endpoint for this. Add the role in MySQL:
   ```sql
   INSERT INTO user_roles (user_id, role) VALUES ('<user-id>', 'ADMIN');
@@ -285,7 +295,7 @@ Errors: `401` invalid credentials, `401` account is disabled (blocked by an admi
 
 #### Logout: `POST /api/v1/user/logout`
 
-Clears the `accessToken` cookie. Works even if the token has already expired.
+Cancels the token and clears the `accessToken` cookie. Works even if the token has already expired.
 
 Response `200 OK`:
 ```json
@@ -556,6 +566,7 @@ Response `200 OK` (this endpoint returns the stats directly, without the `status
 | `403`  | Not an admin, not your URL or account                                         |
 | `404`  | User or URL not found, unknown endpoint                                       |
 | `409`  | Email already registered, custom alias taken                                  |
+| `429`  | Too many password attempts from your IP address, try again in a few seconds   |
 | `500`  | Unexpected server error                                                       |
 | `503`  | The service behind the gateway is not running                                 |
 
@@ -607,7 +618,8 @@ on GitHub.
 
 ```bash
 cp .env.example .env
-# edit .env: set the passwords, and a JWT secret from `openssl rand -base64 32`
+# edit .env: set the passwords, a JWT secret from `openssl rand -base64 32`
+# and a GATEWAY_SECRET from `openssl rand -hex 32`
 docker compose up -d
 docker compose ps        # wait until every container shows "healthy"
 ```
@@ -682,6 +694,8 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 | `url-service.yml`     | `security.app.url.base-url`            | `SHORT_URL_BASE` in `.env` | Prefix used to build `shortUrl` |
 | `url-service.yml`     | `security.app.ui.base-url`             | `UI_BASE_URL` in `.env` | Where password-protected links send visitors (`/unlock/<code>`) |
 | `url-service.yml`     | `security.app.cache.url-ttl-minutes`   | `15`                    | How long a link stays in Redis    |
+| all services          | `security.gateway.secret`              | `GATEWAY_SECRET` in `.env` | Shared secret the gateway sends so services know a request came through it |
+| `api-gateway` code    | `RateLimitConfig`                      | 10 at once, then 10/min | Password attempts allowed per IP  |
 
 ---
 
@@ -689,7 +703,6 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 
 Planned, not built yet:
 
-- Rate limiting at the gateway
 - Dashboard endpoint with stats for all of a user's links
 - Country/city lookup for clicks (GeoIP)
 - React.js frontend
