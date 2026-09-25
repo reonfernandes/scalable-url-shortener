@@ -128,9 +128,12 @@ account is **active straight away**, with no email verification.
 The dashboard needs two calls:
 
 - `GET /api/v1/user/me`: the user's name and email.
-- `GET /api/v1/url/my-urls?page=1&size=10`: the user's short links. `totalElements` is the number of links.
+- `GET /api/v1/url/my-urls?page=1&size=10`: the user's short links, newest first. `totalElements` is the number
+  of links.
+- `GET /api/v1/analytics/clicks?urlIds=1,2,3`: the click totals for the links on that page.
 
-Click stats for a link come from `GET /api/v1/analytics/{shortCode}`.
+Clicks are only counted in analytics-service, so the dashboard and the stats page always show the same number.
+The stats page for one link uses `GET /api/v1/url/{urlId}` and `GET /api/v1/analytics/{urlId}`.
 
 ### 4. Create a short URL
 
@@ -145,14 +148,17 @@ Click stats for a link come from `GET /api/v1/analytics/{shortCode}`.
 2. url-service looks in Redis first (key `url:short:<code>`, cached for **15 minutes**), then MySQL. If Redis is
    down, it reads from MySQL directly, so links keep working.
 3. It checks that the link is active, not expired, and that the password is correct (if it has one).
-4. It increases the click count, publishes a `url-clicked` event and replies with **302** to the long URL.
-5. analytics-service reads the event, parses the user agent and saves the click in MongoDB.
+4. It publishes a `url-clicked` event and replies with **302** to the long URL. A password-protected link
+   sends the visitor to the UI's `/unlock/<code>` page instead.
+5. analytics-service reads the event, parses the user agent and saves the click in MongoDB. Clicks are saved
+   with the link's `urlId`, so changing a link's alias keeps its stats.
 
 ### 6. Admin blocks a user / user deletes their account
 
 - The admin deactivates or activates a user → a `user.state` event → url-service turns all that user's links
   off or on (and clears them from the Redis cache).
-- The user deletes their account → a `user.deleted` event → url-service deletes all their links.
+- The user deletes their account → a `user.deleted` event → url-service deletes all their links, and
+  analytics-service deletes their click data.
 
 ---
 
@@ -360,6 +366,9 @@ Requires a JWT with `ROLE_ADMIN`.
 | `PUT`  | `/api/v1/admin/account/activate?userId=<id>`     | Unblock a user and turn their links back on    |
 | `GET`  | `/api/v1/admin/accounts?page=1&size=10`          | List users (page starts at 1)                  |
 
+Deactivating a user who is already deactivated (or activating an active one) changes nothing and still
+returns `200`. An unknown `userId` returns `404`.
+
 Deactivate / activate response `200 OK`:
 ```json
 { "status": 200, "message": "Account deactivated successfully" }
@@ -393,7 +402,8 @@ List users response `200 OK` (`page` starts at 1, `size` is at most 100):
 | Method   | Endpoint                          | Auth | Description               |
 |----------|-----------------------------------|------|---------------------------|
 | `POST`   | `/api/v1/url/new`                 | JWT  | Create a short URL        |
-| `GET`    | `/api/v1/url/my-urls?page=1&size=10` | JWT | List your short URLs  |
+| `GET`    | `/api/v1/url/my-urls?page=1&size=10` | JWT | List your short URLs, newest first |
+| `GET`    | `/api/v1/url/{urlId}`             | JWT  | Get one of your URLs      |
 | `PATCH`  | `/api/v1/url/update-url?urlId=1`  | JWT  | Update one of your URLs   |
 | `DELETE` | `/api/v1/url/delete-url?urlId=1`  | JWT  | Delete one of your URLs   |
 
@@ -432,7 +442,6 @@ Response `201 Created`:
     "shortCode": "my-blog",
     "shortUrl": "http://localhost:8080/my-blog",
     "longUrl": "https://www.example.com/some/very/long/path",
-    "clickCount": 0,
     "isActive": true,
     "isPasswordProtected": true,
     "createdAt": "2026-09-24T10:15:30.123",
@@ -457,7 +466,6 @@ Response `200 OK` (`page` starts at 1, `size` is at most 100; each item has the 
         "shortCode": "my-blog",
         "shortUrl": "http://localhost:8080/my-blog",
         "longUrl": "https://www.example.com/some/very/long/path",
-        "clickCount": 12,
         "isActive": true
       }
     ],
@@ -469,14 +477,29 @@ Response `200 OK` (`page` starts at 1, `size` is at most 100; each item has the 
 }
 ```
 
+Click totals are not part of the link; get them from `GET /api/v1/analytics/clicks?urlIds=...`.
+
+#### Get one: `GET /api/v1/url/{urlId}`
+
+Response `200 OK` with `data` holding one link, in the same shape as the create response.
+
+Errors: `403` not your URL, `404` URL not found.
+
 #### Update: `PATCH /api/v1/url/update-url?urlId=1`
 
-Same fields as create. All fields are optional; only the fields you send are changed.
+Same fields as create. All fields are optional; only the fields you send are changed. To take something away,
+send one of these flags:
+
+| Field            | Effect                                   |
+|------------------|------------------------------------------|
+| `removeExpiry`   | `true`: the link never expires           |
+| `removePassword` | `true`: the link no longer needs a password |
 
 Request:
 ```json
 {
-  "title": "Updated title"
+  "title": "Updated title",
+  "removePassword": true
 }
 ```
 
@@ -485,7 +508,8 @@ Response `200 OK`:
 { "status": 200, "message": "URL Updated successfully." }
 ```
 
-Errors: `403` not your URL, `404` URL not found, `409` custom alias not available.
+Errors: `400` a new value and a remove flag for the same field (e.g. `password` and `removePassword`),
+`403` not your URL, `404` URL not found, `409` custom alias not available.
 
 #### Delete: `DELETE /api/v1/url/delete-url?urlId=1`
 
@@ -508,8 +532,8 @@ Errors: `403` not your URL, `404` URL not found.
 
 **Normal links:** `GET` responds with `302 Found` and header `Location: <long URL>`.
 
-**Password-protected links:** a `GET` returns `400 URL is password protected`. The frontend asks the visitor for the
-password and sends it in the body (never in the URL):
+**Password-protected links:** a `GET` responds with `302` to the UI's `/unlock/{shortCode}` page (`UI_BASE_URL`).
+That page asks the visitor for the password and sends it in the body (never in the URL):
 
 ```json
 { "password": "open123" }
@@ -536,16 +560,19 @@ Response `200 OK`, then the frontend sends the visitor to `longUrl`:
 
 ### Analytics API
 
-| Method | Endpoint                          | Auth | Description                    |
-|--------|-----------------------------------|------|--------------------------------|
-| `GET`  | `/api/v1/analytics/{shortCode}`   | JWT  | Click stats for one of your links |
+| Method | Endpoint                                  | Auth | Description                          |
+|--------|-------------------------------------------|------|--------------------------------------|
+| `GET`  | `/api/v1/analytics/{urlId}`               | JWT  | Click stats for one of your links    |
+| `GET`  | `/api/v1/analytics/clicks?urlIds=1,2,3`   | JWT  | Total clicks for up to 100 links     |
 
-Only clicks on your own links are counted, so a link that belongs to someone else returns zeros.
+Clicks are stored with the link's `urlId`, so stats stay the same when the alias changes. Only clicks on your own
+links are counted, so a link that belongs to someone else returns zeros. Both endpoints return their data directly,
+without the `status`/`message` wrapper.
 
-Response `200 OK` (this endpoint returns the stats directly, without the `status`/`message` wrapper):
+Stats for one link, `200 OK`:
 ```json
 {
-  "shortCode": "my-blog",
+  "urlId": 1,
   "totalClicks": 12,
   "clicksByBrowser": { "Chrome": 8, "Firefox": 4 },
   "clicksByOs": { "Windows 11": 5, "Android 14": 7 },
@@ -554,6 +581,11 @@ Response `200 OK` (this endpoint returns the stats directly, without the `status
 ```
 
 > Country is always `Unknown` for now (GeoIP lookup is not added yet).
+
+Click totals, `200 OK` (every requested id is in the answer; links without clicks have `0`):
+```json
+{ "1": 12, "2": 0, "3": 5 }
+```
 
 ---
 
@@ -579,7 +611,7 @@ package, and a message that can't be read is logged and skipped instead of block
 
 | Topic             | Producer     | Consumer             | Payload                                                          | Purpose                           |
 |-------------------|--------------|----------------------|------------------------------------------------------------------|-----------------------------------|
-| `user.deleted`    | user-service | url-service          | `userId`                                                         | Delete the user's links           |
+| `user.deleted`    | user-service | url-service, analytics-service | `userId`                                               | Delete the user's links and clicks |
 | `user.state`      | user-service | url-service          | `userId, state`                                                  | Turn the user's links on/off      |
 | `url-clicked`     | url-service  | analytics-service    | `shortCode, urlId, userId, ipAddress, userAgent, referrer, clickedAt` | Save the click for analytics |
 
@@ -596,6 +628,9 @@ package, and a message that can't be read is logged and skipped instead of block
 **Redis** (`6379`) and **Kafka** (`9092`). The `user_service` and `url_service` databases are created
 automatically on first start (`createDatabaseIfNotExist=true` in the JDBC URLs).
 
+Topics are created by the services on start-up: `user.deleted` and `user.state` by user-service, `url-clicked`
+by url-service.
+
 **Already have a `user_service` database from an older version?** Hibernate adds new columns but never removes
 old ones, and the old columns below would make new sign-ups fail. Run this once in MySQL (the `UPDATE` lets
 users who never verified their email log in):
@@ -609,6 +644,25 @@ ALTER TABLE users
     DROP COLUMN auth_provider,
     DROP COLUMN provider_id,
     DROP COLUMN url_count;
+```
+
+**Already have a `url_service` database from an older version?** Clicks are no longer counted in MySQL, and new
+links can't be saved while the old `click_count` column is there. Run this once:
+
+```sql
+ALTER TABLE url_service.url_mappings DROP COLUMN click_count;
+```
+
+**Clicks recorded before the `.env` setup** were saved in MongoDB's `test` database, but analytics-service now
+reads from `analytics`. Move them across once (running it twice is harmless):
+
+```bash
+docker exec url_unstructured_db mongosh --quiet --eval '
+  db.getSiblingDB("test").url_analytics.aggregate([
+    { $merge: { into: { db: "analytics", coll: "url_analytics" }, whenMatched: "keepExisting" } }
+  ]);
+  db.getSiblingDB("test").url_analytics.drop();
+'
 ```
 
 ### 2. Create your `.env` file and start the infrastructure
