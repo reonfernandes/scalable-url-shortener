@@ -224,13 +224,18 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deactivateAccount(String userId) {
         log.info("User Service :: Deactivating user account: {}", userId);
-        User user = findIfUserIsActive(userId);
-        if (user != null){
-            userRepository.deactivateUser(user.getUserId());
-            // the user may still hold a valid token; cancel it so they're logged out now
-            tokenRevocationService.revokeAllTokens(userId);
-            publishUserStateEvent(userId, false);
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new UserNotFoundException("User not found.")
+        );
+        if (!user.isActive()) {
+            log.info("User Service :: Account {} is already deactivated", userId);
+            return;
         }
+
+        userRepository.deactivateUser(user.getUserId());
+        // the user may still hold a valid token; cancel it so they're logged out now
+        tokenRevocationService.revokeAllTokens(userId);
+        publishUserStateEvent(userId, false);
         log.info("User Service :: Account deactivated");
     }
 
@@ -241,10 +246,13 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new UserNotFoundException("User not found.")
         );
-        if (user != null){
-            userRepository.activateUser(user.getUserId());
-            publishUserStateEvent(userId, true);
+        if (user.isActive()) {
+            log.info("User Service :: Account {} is already active", userId);
+            return;
         }
+
+        userRepository.activateUser(user.getUserId());
+        publishUserStateEvent(userId, true);
         log.info("User Service :: Account Activated");
     }
 
