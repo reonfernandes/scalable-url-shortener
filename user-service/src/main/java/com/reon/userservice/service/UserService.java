@@ -24,5 +24,5 @@ public interface UserService {
 
     void deactivateAccount(String userId);
     void activateAccount(String userId);
-    PageResponse<UserProfile> viewAllUsers(int pageNo, int pageSize);
+    PageResponse<UserProfile> viewAllUsers(int pageNo, int pageSize, String search, String status);
 }

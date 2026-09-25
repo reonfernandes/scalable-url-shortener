@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -251,16 +252,24 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public PageResponse<UserProfile> viewAllUsers(int pageNo, int pageSize) {
+    public PageResponse<UserProfile> viewAllUsers(int pageNo, int pageSize, String search, String status) {
         if (pageNo < 1 || pageSize < 1) {
             throw new IllegalArgumentException("page and size must be 1 or more");
         }
         int size = Math.min(pageSize, PageResponse.MAX_PAGE_SIZE);
 
+        Boolean active = switch (status == null ? "all" : status.toLowerCase()) {
+            case "all" -> null;
+            case "active" -> true;
+            case "deactivated" -> false;
+            default -> throw new IllegalArgumentException("status must be all, active or deactivated");
+        };
+        String searchText = (search == null || search.isBlank()) ? null : search.trim();
+
         log.info("User Service :: Retrieving users info from page:{} of size:{}", pageNo, size);
-        // Spring Data counts pages from 0, our API counts from 1
-        Pageable pageable = PageRequest.of(pageNo - 1, size);
-        Page<UserProfile> users = userRepository.findAll(pageable)
+        // Spring Data counts pages from 0, our API counts from 1. Newest accounts first.
+        Pageable pageable = PageRequest.of(pageNo - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<UserProfile> users = userRepository.searchUsers(searchText, active, pageable)
                 .map(userMapper::profileResponse);
 
         log.info("User Service :: Users data retrieval successful");

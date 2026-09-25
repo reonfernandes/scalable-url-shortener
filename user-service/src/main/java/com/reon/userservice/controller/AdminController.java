@@ -50,9 +50,13 @@ public class AdminController {
 
     @GetMapping(value = "/accounts")
     public ResponseEntity<ApiResponse<PageResponse<UserProfile>>> getAccounts(@RequestParam(name = "page", defaultValue = "1") int pageNo,
-                                                         @RequestParam(name = "size", defaultValue = "10") int pageSize) {
-        log.info("Admin Controller :: Incoming request for fetching all users → page = {}, size = {}", pageNo, pageSize);
-        PageResponse<UserProfile> userProfiles = userService.viewAllUsers(pageNo, pageSize);
+                                                         @RequestParam(name = "size", defaultValue = "10") int pageSize,
+                                                         // optional: part of a name or email
+                                                         @RequestParam(name = "search", required = false) String search,
+                                                         // optional: all (default), active or deactivated
+                                                         @RequestParam(name = "status", defaultValue = "all") String status) {
+        log.info("Admin Controller :: Incoming request for fetching users → page = {}, size = {}, status = {}", pageNo, pageSize, status);
+        PageResponse<UserProfile> userProfiles = userService.viewAllUsers(pageNo, pageSize, search, status);
         log.info("Admin Controller :: Outgoing request: Users info fetched");
 
         return ResponseEntity
