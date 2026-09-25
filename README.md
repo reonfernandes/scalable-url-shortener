@@ -579,14 +579,11 @@ package, and a message that can't be read is logged and skipped instead of block
 ### 1. Prerequisites
 
 - Java 21 and Maven 3.9+
-- MySQL on `3306` with two databases:
-  ```sql
-  CREATE DATABASE user_service;
-  CREATE DATABASE url_service;
-  ```
-- Redis on `6379` (used by url-service as a redirect cache)
-- Kafka on `9092`
-- MongoDB on `27017`
+- Docker with Docker Compose
+
+`docker-compose.yml` starts everything the services need: **MySQL** (`3306`), **MongoDB** (`27017`),
+**Redis** (`6379`) and **Kafka** (`9092`). The `user_service` and `url_service` databases are created
+automatically on first start (`createDatabaseIfNotExist=true` in the JDBC URLs).
 
 **Already have a `user_service` database from an older version?** Hibernate adds new columns but never removes
 old ones, and the old columns below would make new sign-ups fail. Run this once in MySQL (the `UPDATE` lets
@@ -603,12 +600,28 @@ ALTER TABLE users
     DROP COLUMN url_count;
 ```
 
-### 2. Set your own configuration
+### 2. Create your `.env` file and start the infrastructure
 
-Edit the files in `config-server/src/main/resources/configurations/` and put in your own values:
-the MySQL username/password and the JWT secret. The JWT secret must be
-the **same** in `user-service.yml` and `api-gateway.yml` (a Base64 key of at least 256 bits, e.g. from
-`openssl rand -base64 32`).
+All passwords and secrets live in one `.env` file in the repo root. It is ignored by git, so it never ends up
+on GitHub.
+
+```bash
+cp .env.example .env
+# edit .env: set the passwords, and a JWT secret from `openssl rand -base64 32`
+docker compose up -d
+docker compose ps        # wait until every container shows "healthy"
+```
+
+Docker Compose reads `.env` automatically, and each Spring Boot service loads it too
+(`spring.config.import` in its `application.yml`). The service configs in
+`config-server/src/main/resources/configurations/` only contain placeholders like `${MYSQL_ROOT_PASSWORD}`.
+If a required value is missing, the service stops at start-up with `Could not resolve placeholder '...'`.
+
+Start the services from their own folder (`cd user-service && mvn spring-boot:run`) or from the repo root, since
+both `./.env` and `../.env` are checked. The `.env` variables are listed in `.env.example`.
+
+> MySQL and MongoDB only apply the passwords from `.env` the **first** time they start with an empty volume.
+> If you change them later, reset the containers once with `docker compose down -v` (this deletes their data).
 
 ### 3. Build
 
@@ -666,7 +679,7 @@ Main settings (in `config-server/src/main/resources/configurations/`):
 |-----------------------|----------------------------------------|-------------------------|-----------------------------------|
 | `user-service.yml`    | `security.jwt.expiration-time`         | `3600`                  | JWT lifetime (seconds)            |
 | `user-service.yml`    | `security.cookie.name`                 | `accessToken`           | Name of the JWT cookie            |
-| `url-service.yml`     | `security.app.url.base-url`            | `http://localhost:8080` | Prefix used to build `shortUrl`   |
+| `url-service.yml`     | `security.app.url.base-url`            | `SHORT_URL_BASE` in `.env` | Prefix used to build `shortUrl` |
 | `url-service.yml`     | `security.app.cache.url-ttl-minutes`   | `15`                    | How long a link stays in Redis    |
 
 ---
