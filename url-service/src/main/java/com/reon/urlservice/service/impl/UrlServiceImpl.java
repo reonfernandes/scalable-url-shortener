@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -122,8 +123,9 @@ public class UrlServiceImpl implements UrlService {
 
         log.info("URL Service :: Fetching urls for userId: {}, page: {}, size: {}", userId, page, pageSize);
 
-        // Spring Data counts pages from 0, our API counts from 1
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        // Spring Data counts pages from 0, our API counts from 1. Newest links first.
+        Sort newestFirst = Sort.by(Sort.Direction.DESC, "createdAt", "urlId");
+        Pageable pageable = PageRequest.of(page - 1, pageSize, newestFirst);
         Page<UrlResponse> urls = urlRepository.findByUserId(userId, pageable)
                 .map(urlMapper::urlResponseToUser);
 
