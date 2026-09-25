@@ -1,5 +1,6 @@
 package com.reon.urlservice.controller;
 
+import com.reon.exception.PasswordRequiredException;
 import com.reon.exception.response.ApiResponse;
 import com.reon.urlservice.dto.RedirectRequest;
 import com.reon.urlservice.dto.UnlockUrlRequest;
@@ -10,21 +11,27 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/v1/redirect")
 public class RedirectController {
     private final Logger log = LoggerFactory.getLogger(RedirectController.class);
     private final RedirectService redirectService;
+    private final String uiBaseUrl;
 
-    public RedirectController(RedirectService redirectService) {
+    public RedirectController(RedirectService redirectService,
+                              @Value("${security.app.ui.base-url}") String uiBaseUrl) {
         this.redirectService = redirectService;
+        this.uiBaseUrl = uiBaseUrl;
     }
 
     // normal links: the browser follows the 302 straight to the long URL
@@ -33,11 +40,20 @@ public class RedirectController {
                                              HttpServletRequest request) {
         log.info("Redirect Controller :: Incoming request for redirecting shortUrl: {}", shortCode);
 
-        UrlResponse urlResponse = redirectService.redirectUserToOriginalUrl(buildRedirectRequest(shortCode, null, request));
+        URI destination;
+        try {
+            UrlResponse urlResponse = redirectService.redirectUserToOriginalUrl(buildRedirectRequest(shortCode, null, request));
+            destination = URI.create(urlResponse.longUrl());
+            log.info("Redirect Controller :: Outgoing request: Redirecting shortUrl: {}", shortCode);
+        } catch (PasswordRequiredException exception) {
+            // A browser can't show a password prompt for a JSON error, so send the visitor
+            // to the UI's password page, which unlocks the link with POST below.
+            destination = URI.create(uiBaseUrl + "/unlock/" + URLEncoder.encode(shortCode, StandardCharsets.UTF_8));
+            log.info("Redirect Controller :: shortUrl: {} is password protected, sending visitor to the unlock page", shortCode);
+        }
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setLocation(URI.create(urlResponse.longUrl()));
-        log.info("Redirect Controller :: Outgoing request: Redirecting shortUrl: {}", shortCode);
+        headers.setLocation(destination);
 
         return ResponseEntity
                 .status(HttpStatus.FOUND)
