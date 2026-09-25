@@ -56,6 +56,21 @@ public class UrlController {
                 ));
     }
 
+    @GetMapping("/{urlId}")
+    public ResponseEntity<ApiResponse<UrlResponse>> fetchUrl(@PathVariable("urlId") Long urlId) {
+        log.info("Url Controller :: Incoming request for fetching url: {}", urlId);
+        UrlResponse url = urlService.viewUrl(urlId);
+        log.info("Url Controller :: Outgoing request: Url fetched");
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponse.of(
+                        HttpStatus.OK,
+                        "Success",
+                        url
+                ));
+    }
+
     @PatchMapping("/update-url")
     public ResponseEntity<ApiResponse<UrlResponse>> updateUrl(@RequestParam(name = "urlId") Long urlId,
                                                               @Valid @RequestBody UpdateUrlRequest updateUrlRequest) {

@@ -12,7 +12,6 @@ public record UrlResponse(
         String shortCode,
         String shortUrl,
         String longUrl,
-        Long clickCount,
         boolean isActive,
         boolean isPasswordProtected,
         LocalDateTime createdAt,

@@ -19,10 +19,6 @@ public interface UrlRepository extends JpaRepository<UrlMapping, Long> {
 
     Page<UrlMapping> findByUserId(String userId, Pageable pageable);
 
-    @Modifying
-    @Query("UPDATE UrlMapping u SET u.clickCount = u.clickCount + 1 WHERE u.shortCode = :shortCode")
-    void incrementClickCount(@Param("shortCode") String shortCode);
-
     // for kafka events
     @Query("SELECT u.shortCode FROM UrlMapping u WHERE u.userId = :userId")
     List<String> findShortCodesByUserId(@Param("userId") String userId);

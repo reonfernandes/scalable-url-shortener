@@ -21,11 +21,9 @@ services:
         image: mongo:8.0
         container_name: url_unstructured_db
         restart: unless-stopped
-        environment:
-            MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env (see .env.example)}
-            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env (see .env.example)}
+        # No username or password: MongoDB only accepts connections from this computer (127.0.0.1)
         ports:
-            - "27017:27017"
+            - "127.0.0.1:27017:27017"
         volumes:
             - mongo-data:/data/db
             - mongo-config:/data/configdb

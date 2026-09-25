@@ -16,8 +16,9 @@ spring:
                 dialect: org.hibernate.dialect.MySQLDialect
                 format_sql: true
     kafka:
+        # shared by the producer and the topic creator (KafkaAdmin)
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
         producer:
-            bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
             key-serializer: org.apache.kafka.common.serialization.StringSerializer
             value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
             acks: all

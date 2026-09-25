@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -122,13 +123,28 @@ public class UrlServiceImpl implements UrlService {
 
         log.info("URL Service :: Fetching urls for userId: {}, page: {}, size: {}", userId, page, pageSize);
 
-        // Spring Data counts pages from 0, our API counts from 1
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        // Spring Data counts pages from 0, our API counts from 1. Newest links first.
+        Sort newestFirst = Sort.by(Sort.Direction.DESC, "createdAt", "urlId");
+        Pageable pageable = PageRequest.of(page - 1, pageSize, newestFirst);
         Page<UrlResponse> urls = urlRepository.findByUserId(userId, pageable)
                 .map(urlMapper::urlResponseToUser);
 
         log.info("Url Service :: Urls data retrieval successful");
         return new PageResponse<>(urls.getContent(), page, pageSize, urls.getTotalElements(), urls.getTotalPages());
+    }
+
+    @Override
+    public UrlResponse viewUrl(Long urlId) {
+        String userId = httpRequest.getHeader("X-User-Id");
+        if (userId == null) throw new UnauthorizedUrlAccessException();
+
+        UrlMapping url = urlRepository.findById(urlId).orElseThrow(
+                () -> new UrlNotFoundException("URL not found with id: " + urlId)
+        );
+        if (!url.getUserId().equals(userId)) {
+            throw new UnauthorizedUrlAccessException();
+        }
+        return urlMapper.urlResponseToUser(url);
     }
 
     @Override
@@ -144,6 +160,17 @@ public class UrlServiceImpl implements UrlService {
 
         if (!urlMapping.getUserId().equals(userId)) {
             throw new UnauthorizedUrlAccessException();
+        }
+
+        // the remove flags are optional, so they can be null
+        boolean removeExpiry = Boolean.TRUE.equals(updateUrlRequest.removeExpiry());
+        boolean removePassword = Boolean.TRUE.equals(updateUrlRequest.removePassword());
+        boolean hasNewPassword = updateUrlRequest.password() != null && !updateUrlRequest.password().isBlank();
+        if (removeExpiry && updateUrlRequest.expiresAt() != null) {
+            throw new IllegalArgumentException("Send either expiresAt or removeExpiry, not both.");
+        }
+        if (removePassword && hasNewPassword) {
+            throw new IllegalArgumentException("Send either password or removePassword, not both.");
         }
 
         // capture the shortCode before any changes made to alias - old key in redis
@@ -167,11 +194,15 @@ public class UrlServiceImpl implements UrlService {
             urlMapping.setShortCode(alias);
         }
 
-        if (updateUrlRequest.expiresAt() != null) {
+        if (removeExpiry) {
+            urlMapping.setExpiresAt(null);
+        } else if (updateUrlRequest.expiresAt() != null) {
             urlMapping.setExpiresAt(updateUrlRequest.expiresAt());
         }
 
-        if (updateUrlRequest.password() != null && !updateUrlRequest.password().isBlank()) {
+        if (removePassword) {
+            urlMapping.setPasswordHash(null);
+        } else if (hasNewPassword) {
             String hashed = encoder.encode(updateUrlRequest.password());
             urlMapping.setPasswordHash(hashed);
         }

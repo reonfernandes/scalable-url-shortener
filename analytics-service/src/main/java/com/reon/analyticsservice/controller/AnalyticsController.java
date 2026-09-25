@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/analytics")
 public class AnalyticsController {
@@ -17,10 +20,18 @@ public class AnalyticsController {
         this.analyticsService = analyticsService;
     }
 
-    @GetMapping("/{shortCode}")
-    public ResponseEntity<UrlStatsResponse> getStats(@PathVariable("shortCode") String shortCode,
+    // total clicks for several links in one call (the dashboard list): ?urlIds=1,2,3
+    @GetMapping("/clicks")
+    public ResponseEntity<Map<Long, Long>> getClickCounts(@RequestParam("urlIds") List<Long> urlIds,
+                                                         @RequestHeader("X-User-Id") String userId) {
+        log.info("Analytics Controller :: Fetching click counts for {} links, userId: {}", urlIds.size(), userId);
+        return ResponseEntity.ok(analyticsService.getClickCounts(urlIds, userId));
+    }
+
+    @GetMapping("/{urlId}")
+    public ResponseEntity<UrlStatsResponse> getStats(@PathVariable("urlId") Long urlId,
                                                      @RequestHeader("X-User-Id") String userId) {
-        log.info("Analytics Controller :: Fetching stats for shortCode: {}, userId: {}", shortCode, userId);
-        return ResponseEntity.ok(analyticsService.getStatsForUrl(shortCode, userId));
+        log.info("Analytics Controller :: Fetching stats for urlId: {}, userId: {}", urlId, userId);
+        return ResponseEntity.ok(analyticsService.getStatsForUrl(urlId, userId));
     }
 }

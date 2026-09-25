@@ -38,10 +38,6 @@ public class UrlMapping {
     @Builder.Default
     private boolean active = true;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private long clickCount = 0L;
-
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
