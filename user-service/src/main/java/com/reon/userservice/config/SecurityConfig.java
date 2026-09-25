@@ -3,6 +3,7 @@ package com.reon.userservice.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AccountStatusUserDetailsChecker;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -38,7 +39,13 @@ public class SecurityConfig {
     public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
-        provider.setHideUserNotFoundExceptions(false);
+        // Unknown emails give the same "invalid credentials" answer, and Spring still runs a
+        // password hash for them, so the response time doesn't reveal which emails exist.
+        provider.setHideUserNotFoundExceptions(true);
+        // Check "is the account disabled?" only AFTER the password is correct, so a wrong
+        // password never reveals that an account exists and is disabled.
+        provider.setPreAuthenticationChecks(user -> { });
+        provider.setPostAuthenticationChecks(new AccountStatusUserDetailsChecker());
         return provider;
     }
 
