@@ -632,8 +632,12 @@ If a required value is missing, the service stops at start-up with `Could not re
 Start the services from their own folder (`cd user-service && mvn spring-boot:run`) or from the repo root, since
 both `./.env` and `../.env` are checked. The `.env` variables are listed in `.env.example`.
 
-> MySQL and MongoDB only apply the passwords from `.env` the **first** time they start with an empty volume.
-> If you change them later, reset the containers once with `docker compose down -v` (this deletes their data).
+> MySQL only applies the password from `.env` the **first** time it starts with an empty volume.
+> If you change it later, reset the containers once with `docker compose down -v` (this deletes their data).
+>
+> MongoDB runs without a username and password, so it only listens on `127.0.0.1` (this computer).
+> A Mongo volume created by an older version that had a root user still works: without the
+> `MONGO_INITDB_ROOT_*` settings, MongoDB starts with login turned off.
 
 ### 3. Build
 

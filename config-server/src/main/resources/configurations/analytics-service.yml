@@ -6,7 +6,6 @@ spring:
         host: ${MONGO_HOST:localhost}
         port: ${MONGO_PORT:27017}
         database: ${MONGO_DATABASE:analytics}
-        authentication-database: admin
     kafka:
         consumer:
             key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
