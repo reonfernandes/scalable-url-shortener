@@ -63,5 +63,8 @@ security:
     app:
         url:
             base-url: ${SHORT_URL_BASE:http://localhost:8080}
+        ui:
+            # Visitors opening a password-protected link are sent to <base-url>/unlock/<code>
+            base-url: ${UI_BASE_URL:http://localhost:5173}
         cache:
             url-ttl-minutes: 15

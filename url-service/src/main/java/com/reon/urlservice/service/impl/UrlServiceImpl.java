@@ -25,6 +25,7 @@ import java.util.Map;
 
 @Service
 public class UrlServiceImpl implements UrlService {
+    private static final int RANDOM_CODE_LENGTH = 7;
 
     private final Logger log = LoggerFactory.getLogger(UrlServiceImpl.class);
     private final UrlRepository urlRepository;
@@ -202,13 +203,27 @@ public class UrlServiceImpl implements UrlService {
                 .expiresAt(urlRequest.expiresAt())
                 .build();
 
+        // saveAndFlush: a clash with an existing short code fails here, inside this call
         if (urlRequest.customAlias() != null && !urlRequest.customAlias().isBlank()) {
             url.setShortCode(urlRequest.customAlias());
-            return urlRepository.save(url);
+            return urlRepository.saveAndFlush(url);
         } else {
             UrlMapping savedUrl = urlRepository.save(url);
-            savedUrl.setShortCode(Base62Encoder.encode(savedUrl.getUrlId()));
-            return urlRepository.save(savedUrl);
+            savedUrl.setShortCode(generateFreeShortCode(savedUrl.getUrlId()));
+            return urlRepository.saveAndFlush(savedUrl);
         }
+    }
+
+    /**
+     * The code for an id is normally its Base62 form (6 characters). Aliases made before the
+     * 7-character minimum can already hold that code; then use a random 7-character code instead.
+     */
+    private String generateFreeShortCode(Long urlId) {
+        String shortCode = Base62Encoder.encode(urlId);
+        while (urlRepository.existsByShortCode(shortCode)) {
+            log.info("URL Service :: Short code {} is already taken, using a random one", shortCode);
+            shortCode = Base62Encoder.random(RANDOM_CODE_LENGTH);
+        }
+        return shortCode;
     }
 }

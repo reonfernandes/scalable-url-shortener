@@ -3,11 +3,14 @@ package com.reon.urlservice.common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.SecureRandom;
+
 public class Base62Encoder {
     private final static Logger log = LoggerFactory.getLogger(Base62Encoder.class);
     private static final String alphabets = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int Base = alphabets.length();
     private static final int target_length = 6;
+    private static final SecureRandom random = new SecureRandom();
 
     private Base62Encoder(){}
 
@@ -35,5 +38,13 @@ public class Base62Encoder {
 
         return shortCode.reverse().toString();
     }
-}
 
+    /** A random code of the given length, used when the code for an id is already taken. */
+    public static String random(int length) {
+        StringBuilder shortCode = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            shortCode.append(alphabets.charAt(random.nextInt(Base)));
+        }
+        return shortCode.toString();
+    }
+}
