@@ -28,6 +28,9 @@ public class UserMapper {
                 .userId(user.getUserId())
                 .name(user.getName())
                 .email(user.getEmail())
+                .roles(user.getRole().stream().map(Enum::name).sorted().toList())
+                .active(user.isActive())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }
