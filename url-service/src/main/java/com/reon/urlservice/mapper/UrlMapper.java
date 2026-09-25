@@ -23,7 +23,6 @@ public class UrlMapper {
                 .shortCode(urlMapping.getShortCode())
                 .shortUrl(buildShortUrl(urlMapping.getShortCode()))
                 .longUrl(urlMapping.getLongUrl())
-                .clickCount(urlMapping.getClickCount())
                 .isActive(urlMapping.isActive())
                 .isPasswordProtected(urlMapping.getPasswordHash() != null)
                 .createdAt(urlMapping.getCreatedAt())

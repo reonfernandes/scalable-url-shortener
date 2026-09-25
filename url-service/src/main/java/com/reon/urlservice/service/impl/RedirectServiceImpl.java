@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -40,8 +39,8 @@ public class RedirectServiceImpl implements RedirectService {
         this.kafkaTemplate = kafkaTemplate;
     }
 
+    // clicks are counted by analytics-service from the url-clicked event, not here
     @Override
-    @Transactional
     public UrlResponse redirectUserToOriginalUrl(RedirectRequest redirectRequest) {
         log.info("Redirect Service :: Redirecting user to original url: {}", redirectRequest.shortCode());
         CachedUrlDTO url = urlCacheService.getOrLoad(
@@ -68,7 +67,6 @@ public class RedirectServiceImpl implements RedirectService {
             }
         }
 
-        urlRepository.incrementClickCount(redirectRequest.shortCode());
         log.info("Redirect Service :: Redirected to original url: shortCode: {}", redirectRequest.shortCode());
 
         publishClickEvent(redirectRequest, url);

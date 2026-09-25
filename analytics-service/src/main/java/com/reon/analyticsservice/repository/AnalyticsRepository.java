@@ -36,5 +36,13 @@ public interface AnalyticsRepository extends MongoRepository<Analytics, ObjectId
 
     long countByUrlIdAndUserId(String urlId, String userId);
 
+    // total clicks of several links at once: one { key: urlId, value: clicks } per link that has clicks
+    @Aggregation(pipeline = {
+            "{ '$match': { 'urlId' : { '$in': ?0 }, 'userId' : ?1 } }",
+            "{ '$group': { '_id': '$urlId', 'value': { '$sum': 1 } } }",
+            "{ '$project': { 'key': '$_id', 'value': 1, '_id': 0 } }"
+    })
+    List<StatEntry> countClicksPerUrl(List<String> urlIds, String userId);
+
     long deleteByUserId(String userId);
 }
