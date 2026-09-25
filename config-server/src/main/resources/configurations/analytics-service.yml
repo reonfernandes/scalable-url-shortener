@@ -6,7 +6,11 @@ spring:
         host: ${MONGO_HOST:localhost}
         port: ${MONGO_PORT:27017}
         database: ${MONGO_DATABASE:analytics}
-        # the root user created by Docker lives in the "admin" database
+        # Docker Compose creates this root user (MONGO_INITDB_ROOT_*), which turns on
+        # MongoDB's login. Without these two lines every write fails as unauthorized.
+        username: ${MONGO_ROOT_USERNAME}
+        password: ${MONGO_ROOT_PASSWORD}
+        # the root user lives in the "admin" database
         authentication-database: admin
     kafka:
         consumer:
