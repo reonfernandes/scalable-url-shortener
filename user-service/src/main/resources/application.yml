@@ -2,4 +2,8 @@ spring:
     application:
         name: user-service
     config:
-        import: optional:configserver:http://localhost:8600
+        import:
+            - optional:configserver:http://localhost:8600
+            # Secrets come from the .env file in the repo root (see .env.example)
+            - optional:file:.env[.properties]
+            - optional:file:../.env[.properties]
